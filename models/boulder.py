@@ -1,16 +1,13 @@
+from datetime import date
 from typing import Optional, List
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Float, Integer, String, ForeignKey
+from sqlalchemy import Boolean, Date, Float, Integer, String, ForeignKey
 
 from models.base import Base
-from models.boulder_style import boulder_style_table
-from models.boulder_setter import boulder_setter_table
 import models.grade
-import models.area
-import models.style
-import models.user
 import models.ascent
+import models.sector
 
 
 class Boulder(Base):
@@ -19,34 +16,31 @@ class Boulder(Base):
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True
     )
+    external_db_id: Mapped[int] = mapped_column(Integer)
     name: Mapped[str] = mapped_column(String)
     name_normalized: Mapped[str] = mapped_column(String)
-    grade_id: Mapped[int] = mapped_column(ForeignKey("grade.id"))
-    slash_grade_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("grade.id"), nullable=True, default=None
-    )
-    area_id: Mapped[int] = mapped_column(ForeignKey("area.id"))
+    slug: Mapped[str] = mapped_column(String)
+    
+    url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    category: Mapped[Optional[int]] = mapped_column(Integer, nullable=True) # e.g., 1 for Boulder, 0 for Route
     rating: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    number_of_rating: Mapped[int] = mapped_column(Integer, default=0)
-    url: Mapped[str] = mapped_column(String, unique=True)
+    
+    scraped: Mapped[bool] = mapped_column(Boolean, default=False)
+    scraped_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    last_scrape_attempt: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    scrape_error: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    
+    # Foreign Keys
+    grade_id: Mapped[int] = mapped_column(ForeignKey("grade.id"))
+    sector_id: Mapped[int] = mapped_column(ForeignKey("sector.id"))
 
     # Relationship to other entities via Foreign Keys
     grade: Mapped["models.grade.Grade"] = relationship(
         "Grade", back_populates="boulders", foreign_keys=[grade_id]
     )
-    slash_grade: Mapped[Optional["models.grade.Grade"]] = relationship(
-        "Grade", foreign_keys=[slash_grade_id]
-    )
-    area: Mapped["models.area.Area"] = relationship(
-        "Area", back_populates="boulders"
-    )
-
-    # Many-to-Many relationship to styles and setters using core tables
-    styles: Mapped[List["models.style.Style"]] = relationship(
-        secondary=boulder_style_table, back_populates="boulders"
-    )
-    setters: Mapped[List["models.user.User"]] = relationship(
-        secondary=boulder_setter_table, back_populates="set_boulders"
+    sector: Mapped["models.sector.Sector"] = relationship(
+        "Sector", back_populates="boulders"
     )
 
     # Association object for ascents

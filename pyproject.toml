@@ -1,20 +1,14 @@
 [tool.poetry]
-name = "backend"
+name = "scraper"
 version = "0.1.0"
 description = ""
-authors = ["cmareau-git <charles_mareau@hotmail.fr>"]
+authors = ["cmareau-git"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.13"
-sqlalchemy = "^2.0.40"
-bs4 = "^0.0.2"
-aiohttp = "^3.11.16"
-pandas = "^2.3.3"
-numpy = "^2.3.3"
-scipy = "^1.16.2"
-scikit-learn = "^1.7.2"
-flake8 = "^7.3.0"
+requests = "^2.32.5"
+sqlalchemy = "^2.0.45"
 
 
 [build-system]

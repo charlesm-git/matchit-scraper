@@ -1,14 +1,6 @@
-import asyncio
 import random
-from urllib.parse import urljoin
-
-from bs4 import BeautifulSoup
 
 BASE_URL = "https://bleau.info/"
-LANGUAGE = "?locale=en"
-
-
-semaphore = asyncio.Semaphore(10)
 
 USER_AGENTS = [
     # Chrome - Windows
@@ -46,34 +38,15 @@ ACCEPTS = [
     "text/html,application/xhtml+xml",
 ]
 
-ACCEPT_LANGUAGES = [
-    "en-US,en;q=0.9",
-    "fr-FR,fr;q=0.9,en;q=0.8",
-    "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
-    "en-GB,en;q=0.9",
-    "es-ES,es;q=0.9,en;q=0.8",
-]
-
-CONNECTIONS = ["keep-alive", "close"]
-
 
 def get_random_headers():
     return {
         "User-Agent": random.choice(USER_AGENTS),
         "Accept": random.choice(ACCEPTS),
-        "Accept-Language": random.choice(ACCEPT_LANGUAGES),
-        "Connection": random.choice(CONNECTIONS),
         "DNT": random.choice(["1", "0"]),
         "Upgrade-Insecure-Requests": random.choice(["1", "0"]),
     }
 
 
 async def fetch(session, relative_url):
-    """Fetch a url using a aiohttp session"""
-    url = urljoin(BASE_URL, relative_url)
-    url = urljoin(url, LANGUAGE)
-    async with semaphore:
-        async with session.get(url) as response:
-            html = await response.text()
-            await asyncio.sleep(0.01)
-            return BeautifulSoup(html, "html.parser")
+    pass

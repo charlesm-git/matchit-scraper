@@ -20,9 +20,8 @@ class Grade(Base):
     boulders: Mapped[List["models.boulder.Boulder"]] = relationship(
         back_populates="grade", foreign_keys="[Boulder.grade_id]"
     )
-    slash_boulders: Mapped[List["models.boulder.Boulder"]] = relationship(
-        back_populates="slash_grade",
-        foreign_keys="[Boulder.slash_grade_id]",
+    ascents: Mapped[List["models.ascent.Ascent"]] = relationship(
+        "Ascent", back_populates="log_grade"
     )
 
     def __repr__(self):
