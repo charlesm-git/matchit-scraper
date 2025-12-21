@@ -15,3 +15,8 @@ STYLE_MATRIX_FILE = "similarity_style.npz"
 # Git
 GIT_BRANCH = "main"
 REMOTE_NAME = "origin"
+
+VALID_COUNTRY_AREAS = {
+    "switzerland": ["ticino"],
+    "france": ["fontainebleau"],
+}

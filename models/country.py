@@ -1,6 +1,6 @@
 from typing import Optional, List
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import ForeignKey, String, Integer, select
+from sqlalchemy import String, Integer, select
 
 from models.base import Base
 import models.area
@@ -9,7 +9,9 @@ import models.area
 class Country(Base):
     __tablename__ = "country"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
     name: Mapped[str] = mapped_column(String)
     name_normalized: Mapped[str] = mapped_column(String)
     slug: Mapped[str] = mapped_column(String)
@@ -21,3 +23,8 @@ class Country(Base):
 
     def __repr__(self):
         return f"<Country(name: {self.name}, slug: {self.slug})>"
+
+    @classmethod
+    def get_by_slug(cls, db_session, slug: str):
+        """Retrieve a Country by its slug."""
+        return db_session.scalar(select(cls).where(cls.slug == slug))

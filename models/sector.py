@@ -10,11 +10,16 @@ import models.boulder
 class Sector(Base):
     __tablename__ = "sector"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
     name: Mapped[str] = mapped_column(String)
     name_normalized: Mapped[str] = mapped_column(String)
     slug: Mapped[str] = mapped_column(String)
-    external_db_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    external_db_id: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )
+    url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # Foreign Key
     crag_id: Mapped[int] = mapped_column(
@@ -22,10 +27,17 @@ class Sector(Base):
     )
 
     # Relationship
-    crag: Mapped["models.crag.Crag"] = relationship("Crag", back_populates="sectors")
+    crag: Mapped["models.crag.Crag"] = relationship(
+        "Crag", back_populates="sectors"
+    )
     boulders: Mapped[Optional[List["models.boulder.Boulder"]]] = relationship(
         back_populates="sector"
     )
 
     def __repr__(self):
         return f"<Sector(name: {self.name}, slug: {self.slug}, crag_id: {self.crag_id})>"
+
+    @classmethod
+    def get_by_slug(cls, db_session, slug: str):
+        """Retrieve a Sector by its slug."""
+        return db_session.scalar(select(cls).where(cls.slug == slug))

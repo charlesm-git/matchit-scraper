@@ -1,8 +1,16 @@
-from datetime import date
+from datetime import datetime, date
 from typing import Optional, List
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Boolean, Date, Float, Integer, String, ForeignKey
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    Integer,
+    String,
+    ForeignKey,
+)
 
 from models.base import Base
 import models.grade
@@ -13,7 +21,9 @@ import models.sector
 class Boulder(Base):
     __tablename__ = "boulder"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
     external_db_id: Mapped[int] = mapped_column(Integer)
     name: Mapped[str] = mapped_column(String)
     name_normalized: Mapped[str] = mapped_column(String)
@@ -26,13 +36,16 @@ class Boulder(Base):
     rating: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     # Scraping status
-    scraped_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     scraped_ascents: Mapped[bool] = mapped_column(Boolean, default=False)
-    scraped_ascents_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    last_ascent_scrape_attempt: Mapped[Optional[date]] = mapped_column(
-        Date, nullable=True
+    scraped_ascents_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
     )
-    ascent_scrape_error: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    last_ascent_scrape_attempt: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
+    ascent_scrape_error: Mapped[Optional[str]] = mapped_column(
+        String, nullable=True
+    )
     ascent_retry_count: Mapped[int] = mapped_column(Integer, default=0)
 
     # Foreign Keys
