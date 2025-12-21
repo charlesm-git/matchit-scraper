@@ -9,11 +9,11 @@ def create_indexes(engine):
             "CREATE INDEX IF NOT EXISTS idx_boulder_grade_id ON boulder(grade_id)",  # For one grade, list all the boulders
             "CREATE INDEX IF NOT EXISTS idx_boulder_grade_rating ON boulder(grade_id, number_of_rating, rating DESC)",
         ]
-        
+
         for index in indexes:
             conn.execute(text(index))
             conn.commit()
-        
+
         print("Running ANALYZE...")
         conn.execute(text("ANALYZE"))
         conn.commit()

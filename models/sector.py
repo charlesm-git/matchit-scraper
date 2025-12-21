@@ -10,9 +10,7 @@ import models.boulder
 class Sector(Base):
     __tablename__ = "sector"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String)
     name_normalized: Mapped[str] = mapped_column(String)
     slug: Mapped[str] = mapped_column(String)
@@ -24,9 +22,7 @@ class Sector(Base):
     )
 
     # Relationship
-    crag: Mapped["models.crag.Crag"] = relationship(
-        "Crag", back_populates="sectors"
-    )
+    crag: Mapped["models.crag.Crag"] = relationship("Crag", back_populates="sectors")
     boulders: Mapped[Optional[List["models.boulder.Boulder"]]] = relationship(
         back_populates="sector"
     )

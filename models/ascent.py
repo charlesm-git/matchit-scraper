@@ -14,12 +14,8 @@ class Ascent(Base):
     __tablename__ = "ascent"
 
     # General attributes
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
-    external_db_id: Mapped[Optional[int]] = mapped_column(
-        Integer, nullable=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    external_db_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     source: Mapped[int] = mapped_column(Integer)
     log_date: Mapped[date] = mapped_column(Date)
     comment: Mapped[Optional[str]] = mapped_column(String, nullable=True)
@@ -57,9 +53,7 @@ class Ascent(Base):
     boulder: Mapped["models.boulder.Boulder"] = relationship(
         "Boulder", back_populates="ascents"
     )
-    user: Mapped["models.user.User"] = relationship(
-        "User", back_populates="ascents"
-    )
+    user: Mapped["models.user.User"] = relationship("User", back_populates="ascents")
     log_grade: Mapped["models.grade.Grade"] = relationship(
         "Grade", back_populates="ascents"
     )

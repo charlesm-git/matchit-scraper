@@ -32,7 +32,7 @@ def similarity_algorithm():
     save_npz("./similarity_ascent.npz", similarity_ascents_matrix)
     save_npz("./similarity_style.npz", similarity_styles_matrix)
     save_npz("./similarity_grade.npz", similarity_grades_matrix)
-    
+
     print("ML algorythm completed successfully.")
 
 

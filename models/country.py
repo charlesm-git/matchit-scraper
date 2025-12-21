@@ -9,9 +9,7 @@ import models.area
 class Country(Base):
     __tablename__ = "country"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String)
     name_normalized: Mapped[str] = mapped_column(String)
     slug: Mapped[str] = mapped_column(String)

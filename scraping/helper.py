@@ -1,23 +1,8 @@
 import string
 import unicodedata
 from urllib.parse import urljoin
-from models.style import Style
 from models.user import User
 from scraping.fetch import BASE_URL
-
-
-def styles_existance_check(style, db):
-    """Check the existance of a style in the database from a name.
-    If it doesn't exist, adds it.
-    return: a Style instance"""
-    style_object = db.query(Style).where(Style.style == style).first()
-    if style_object:
-        return style_object
-
-    style_object = Style(style=style)
-    db.add(style_object)
-    db.flush()
-    return style_object
 
 
 def user_existance_check(user, db):

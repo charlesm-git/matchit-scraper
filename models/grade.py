@@ -10,9 +10,7 @@ import models.boulder
 class Grade(Base):
     __tablename__ = "grade"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     value: Mapped[str] = mapped_column(String(3))
     correspondence: Mapped[int] = mapped_column(SmallInteger)
 
