@@ -1,10 +1,11 @@
 import argparse
 import sys
 from config import VALID_COUNTRY_AREAS
-from database import Session, drop_tables, initialize_empty_db
+from database import drop_tables, initialize_empty_db
 from models.area import Area
 from models.country import Country
-from scraping.boulder import scrape_boulders_by_grade
+from models.grade import Grade
+from scraping.boulder import scrape_area
 
 
 def reset_db():
@@ -33,32 +34,5 @@ if __name__ == "__main__":
 
     if args.reset:
         reset_db()
-
-    with Session() as db:
-        country: Country = Country.get_by_slug(db, args.country)
-        area: Area = Area.get_by_slug(db, args.area)
         
-        if not country:
-            country = Country.create(
-                db,
-                name=args.country.capitalize(),
-                name_normalized=args.country,
-                slug=args.country,
-            )
-        if not area:
-            area = Area.create(
-                db,
-                name=args.area.capitalize(),
-                name_normalized=args.area,
-                slug=args.area,
-                country_id=country.id,
-            )
-
-        page_index = None
-        if (
-            not area.scraped_boulders
-            and area.current_scraping_page is not None
-        ):
-            page_index = area.current_scraping_page
-
-        scrape_boulders_by_grade(db, country, area, 16, page_index)
+    scrape_area(args.country, args.area)

@@ -126,3 +126,4 @@ def fetch(
         return response.json()
     except requests.exceptions.RequestException as error:
         print(f"Request failed: {error}")
+        raise error

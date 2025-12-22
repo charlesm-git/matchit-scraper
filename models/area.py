@@ -48,10 +48,10 @@ class Area(Base):
         String, nullable=True
     )
     boulder_retry_count: Mapped[int] = mapped_column(Integer, default=0)
-    current_scraping_grade_id: Mapped[Optional[int]] = mapped_column(
-        Integer, nullable=True
+    scraping_resume_grade_correspondence: Mapped[Optional[int]] = (
+        mapped_column(Integer, nullable=True)
     )
-    current_scraping_page: Mapped[Optional[int]] = mapped_column(
+    scraping_resume_page: Mapped[Optional[int]] = mapped_column(
         Integer, nullable=True
     )
 
@@ -71,9 +71,27 @@ class Area(Base):
         """Retrieve an Area by its slug."""
         return db_session.scalar(select(cls).where(cls.slug == slug))
 
-    def update_current_scraping_page(self, db_session, page_index: int):
-        """Update the current scraping page for the Area."""
-        self.current_scraping_page = page_index
+    def update_scraping_resume_page(self, db_session, page_index: int):
+        """Update the scraping resume checkpoint page for the Area."""
+        self.scraping_resume_page = page_index
+        db_session.add(self)
+        db_session.commit()
+        db_session.refresh(self)
+        return self
+
+    def update_scraping_resume_grade(self, db_session, grade_correspondence: int):
+        """Update the scraping resume checkpoint grade for the Area."""
+        self.scraping_resume_grade_correspondence = grade_correspondence
+        db_session.add(self)
+        db_session.commit()
+        db_session.refresh(self)
+        return self
+    
+    def mark_as_scraped(self, db_session):
+        """Mark the Area as having all boulders scraped."""
+        self.scraped_boulders = True
+        self.scraping_resume_page = None
+        self.scraping_resume_grade_correspondence = None
         db_session.add(self)
         db_session.commit()
         db_session.refresh(self)
