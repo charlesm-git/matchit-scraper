@@ -38,7 +38,7 @@ def scrape_area(country_arg: str, area_arg: str):
         country: Country = Country.get_by_slug(db, country_arg)
         area: Area = Area.get_by_slug(db, area_arg)
         # Get all grades
-        grades: list[Grade] = Grade.get_by_min_max_value(db)
+        grades: list[Grade] = Grade.get_by_min_max_value(db, min_value="6A")
 
         # Create country and area if they do not exist
         if not country:
