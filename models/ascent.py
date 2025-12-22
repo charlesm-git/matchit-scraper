@@ -31,7 +31,7 @@ class Ascent(Base):
 
     # Boolean attributes
     with_kneepad: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_FA: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_fa: Mapped[bool] = mapped_column(Boolean, default=False)
     is_soft: Mapped[bool] = mapped_column(Boolean, default=False)
     is_hard: Mapped[bool] = mapped_column(Boolean, default=False)
     is_repeat: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -46,7 +46,7 @@ class Ascent(Base):
     is_sloper: Mapped[bool] = mapped_column(Boolean, default=False)
     is_technical: Mapped[bool] = mapped_column(Boolean, default=False)
     project: Mapped[bool] = mapped_column(Boolean, default=False)
-    recommend: Mapped[bool] = mapped_column(Boolean, default=False)
+    recommended: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Foreign Keys
     boulder_id: Mapped[int] = mapped_column(ForeignKey("boulder.id"))

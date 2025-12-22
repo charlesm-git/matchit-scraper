@@ -1,4 +1,5 @@
 from datetime import datetime, date
+import re
 from typing import Optional, List
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -67,3 +68,20 @@ class Boulder(Base):
 
     def __repr__(self):
         return f"<Boulder(name: {self.name}, grade: {self.grade.value}, setters: {self.setters}, Ascents: {self.ascents})"
+
+    def mark_as_scraped(self, db):
+        self.scraped_ascents = True
+        self.scraped_ascents_at = datetime.now()
+        self.ascent_scrape_error = None
+        self.ascent_retry_count = 0
+        db.add(self)
+        db.commit()
+        db.refresh(self)
+        return self
+    
+    def update_last_ascent_scrape_attempt(self, db):
+        self.last_ascent_scrape_attempt = datetime.now()
+        db.add(self)
+        db.commit()
+        db.refresh(self)
+        return self

@@ -101,6 +101,7 @@ def fetch(
     url: str,
     referer: Optional[str] = None,
     timeout: int = 30,
+    authentication_cookie: str = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Fetch JSON data from API endpoint with realistic browser headers and cookies.
@@ -116,6 +117,9 @@ def fetch(
     """
     request_headers = get_random_headers(referer=referer)
     cookies = generate_realistic_cookies()
+    
+    if authentication_cookie:
+        cookies["nu8a_session"] = authentication_cookie
 
     response = requests.get(
         url, headers=request_headers, cookies=cookies, timeout=timeout

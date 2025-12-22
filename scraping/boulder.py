@@ -6,7 +6,6 @@ from sqlalchemy.orm import scoped_session
 import requests
 
 from database import Session
-from models import grade
 from models.area import Area
 from models.boulder import Boulder
 from models.country import Country
@@ -14,19 +13,8 @@ from models.crag import Crag
 from models.grade import Grade
 from models.sector import Sector
 from scraping.fetch import fetch
-from scraping.helper import text_normalizer
-
-# Graceful shutdown flag
-shutdown_requested = False
-
-
-def signal_handler(signum, frame):
-    global shutdown_requested
-    if shutdown_requested:
-        print("\nForce quit.")
-        sys.exit(1)
-    shutdown_requested = True
-    print("\nShutdown requested. Finishing current page...")
+from scraping.helper import signal_handler, text_normalizer
+from scraping import helper
 
 
 def scrape_area(country_arg: str, area_arg: str):
@@ -231,7 +219,7 @@ def scrape_boulders_by_grade(
             area.update_scraping_resume_page(db, page_index)
 
             # Check for graceful shutdown
-            if shutdown_requested:
+            if helper.shutdown_requested:
                 print(
                     "\nShutdown complete. Progress saved. Resume by running again."
                 )
@@ -241,7 +229,7 @@ def scrape_boulders_by_grade(
             area.update_scraping_resume_grade(db, next_grade_correspondence)
 
             # Check for graceful shutdown
-            if shutdown_requested:
+            if helper.shutdown_requested:
                 print(
                     "\nShutdown complete. Progress saved. Resume by running again."
                 )

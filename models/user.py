@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Integer, String
+from sqlalchemy import Integer, String, select
 
 from models.base import Base
 import models.ascent
@@ -13,8 +13,8 @@ class User(Base):
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True
     )
-    username: Mapped[str] = mapped_column(String)
-    username_normalized: Mapped[str] = mapped_column(String)
+    name: Mapped[str] = mapped_column(String)
+    name_normalized: Mapped[str] = mapped_column(String)
     slug: Mapped[str] = mapped_column(String)
     url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
@@ -25,3 +25,9 @@ class User(Base):
 
     def __repr__(self):
         return f"<User(id: {self.id}, username: {self.username})>"
+
+    @classmethod
+    def get_by_slug(cls, db, slug_value: str):
+        return db.scalar(
+            select(cls).where(cls.slug == slug_value)
+        )
