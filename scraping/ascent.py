@@ -16,16 +16,48 @@ from models.crag import Crag
 from models.grade import Grade
 from models.sector import Sector
 from models.user import User
-from scraping.fetch import fetch
-from scraping.helper import text_normalizer
 from scraping import helper
+from scraping.fetch import fetch
 
 
-def scrape_ascents_for_boulders_in_area(area_slug: str):
+def scrape_ascents_for_boulders_in_area(
+    area_slug: str, force_rescrape: bool = False
+):
     """Scrape ascents for all boulders in the specified area."""
     signal.signal(signal.SIGINT, helper.signal_handler)
 
     with Session() as db:
+        # Handle force rescrape option
+        if force_rescrape:
+            print(
+                f"Force rescrape enabled. Rescraping all boulders in area '{area_slug}'."
+            )
+            print("Press Ctrl+C twice within 10 seconds to cancel.")
+            sleep(10)
+
+            # Delete ascents for all boulders in the area
+            boulders_in_area = db.scalars(
+                select(Boulder)
+                .join(Boulder.sector)
+                .join(Sector.crag)
+                .join(Crag.area)
+                .where(Area.slug == area_slug)
+            ).all()
+
+            for boulder in boulders_in_area:
+                deleted_count = (
+                    db.query(Ascent)
+                    .filter(Ascent.boulder_id == boulder.id)
+                    .delete(synchronize_session=False)
+                )
+                # Mark boulder as not scraped
+                boulder.scraped_ascents = False
+                db.add(boulder)
+            db.commit()
+            print(f"Deleted all ascents for boulders in area '{area_slug}'")
+
+        print(f"Starting ascent scraping for area '{area_slug}'")
+        # Fetch boulders that need ascents scraped
         boulders = db.scalars(
             select(Boulder)
             .join(Boulder.sector)
@@ -38,6 +70,18 @@ def scrape_ascents_for_boulders_in_area(area_slug: str):
             .order_by(Boulder.last_ascent_scrape_attempt.asc().nullsfirst())
         ).all()
 
+        # If no boulders to scrape, exit
+        if not boulders:
+            print(
+                f"All boulders in the database for area '{area_slug}' have already been scraped."
+            )
+            print(
+                f"Use --delete-and-rescrape-all-ascents to force rescraping."
+            )
+            print("Exiting.")
+            return
+
+        # Scrape ascents for each boulder
         for boulder in boulders:
             scrape_ascents_from_boulder(db, boulder)
 
@@ -157,7 +201,7 @@ def scrape_ascents_from_boulder(db: scoped_session, boulder: Boulder):
                 user: User = User.create(
                     db,
                     name=item.get("userName"),
-                    name_normalized=text_normalizer(item.get("userName")),
+                    name_normalized=helper.text_normalizer(item.get("userName")),
                     slug=item.get("userSlug"),
                 )
 

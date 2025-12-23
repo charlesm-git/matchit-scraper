@@ -1,11 +1,10 @@
-from datetime import datetime, date
+from datetime import datetime
 import re
 from typing import Optional, List
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import (
     Boolean,
-    Date,
     DateTime,
     Float,
     Integer,
@@ -67,7 +66,7 @@ class Boulder(Base):
     )
 
     def __repr__(self):
-        return f"<Boulder(name: {self.name}, grade: {self.grade.value}, setters: {self.setters}, Ascents: {self.ascents})"
+        return f"<Boulder(name: {self.name}, grade: {self.grade.value}, Ascents: {self.ascents})"
 
     def mark_as_scraped(self, db):
         self.scraped_ascents = True

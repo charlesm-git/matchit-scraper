@@ -92,6 +92,7 @@ class Area(Base):
         self.scraped_boulders = True
         self.scraping_resume_page = None
         self.scraping_resume_grade_correspondence = None
+        self.boulders_scraped_at = datetime.now()
         db_session.add(self)
         db_session.commit()
         db_session.refresh(self)

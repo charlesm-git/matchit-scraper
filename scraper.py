@@ -17,7 +17,7 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--country", required=True, help="Country slug")
     parser.add_argument("-a", "--area", required=True, help="Area slug")
     parser.add_argument(
-        "-r", "--reset", action="store_true", help="Reset database before scraping"
+        "--reset", action="store_true", help="Reset database before scraping"
     )
     parser.add_argument(
         "-sb", "--scrape-boulders", action="store_true", help="Scrape boulders"
@@ -25,6 +25,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "-sa", "--scrape-ascents", action="store_true", help="Scrape ascents"
     )
+    parser.add_argument(
+        "--delete-and-rescrape-entire-area",
+        action="store_true",
+        help="Delete all boulders and ascents in the area and rescrape from scratch",
+    )
+    parser.add_argument(
+        "--delete-and-rescrape-all-ascents",
+        action="store_true",
+        help="Delete all ascents in the area and rescrape from scratch",
+    )
+    
     args = parser.parse_args()
 
     # Validate country and area
@@ -45,14 +56,17 @@ if __name__ == "__main__":
 
     if not args.scrape_boulders and not args.scrape_ascents:
         print(
-            "No scraping action specified. Use --scrape-boulders or --scrape-ascents."
+            "No scraping action specified. Use --scrape-boulders (-sb) or --scrape-ascents (-sa)."
         )
         sys.exit(0)
 
     # Scrape boulders if requested
     if args.scrape_boulders:
-        scrape_area(args.country, args.area)
+        # Determine if force rescrape is needed
+        force_rescrape = args.delete_and_rescrape_entire_area
+        scrape_area(args.country, args.area, force_rescrape=force_rescrape)
 
     # Scrape ascents if requested
     if args.scrape_ascents:
-        scrape_ascents_for_boulders_in_area(args.area)
+        force_rescrape = args.delete_and_rescrape_all_ascents
+        scrape_ascents_for_boulders_in_area(args.area, force_rescrape=force_rescrape)

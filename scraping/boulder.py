@@ -1,4 +1,5 @@
 import random
+import select
 import signal
 import sys
 from time import sleep
@@ -7,6 +8,7 @@ import requests
 
 from database import Session
 from models.area import Area
+from models.ascent import Ascent
 from models.boulder import Boulder
 from models.country import Country
 from models.crag import Crag
@@ -17,7 +19,7 @@ from scraping.helper import signal_handler, text_normalizer
 from scraping import helper
 
 
-def scrape_area(country_arg: str, area_arg: str):
+def scrape_area(country_arg: str, area_arg: str, force_rescrape: bool = False):
     """Scrape all boulders for a given area in a country"""
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -25,8 +27,6 @@ def scrape_area(country_arg: str, area_arg: str):
         # Ensure country and area exist
         country: Country = Country.get_by_slug(db, country_arg)
         area: Area = Area.get_by_slug(db, area_arg)
-        # Get all grades
-        grades: list[Grade] = Grade.get_by_min_max_value(db, min_value="6A")
 
         # Create country and area if they do not exist
         if not country:
@@ -43,11 +43,59 @@ def scrape_area(country_arg: str, area_arg: str):
                 name_normalized=area_arg,
                 slug=area_arg,
                 country_id=country.id,
+                url=f"https://www.8a.nu/areas/{country.slug}/{area_arg}/",
             )
+
+        # Check if area has already been fully scraped
+        # If so, and force_rescrape is not set, skip scraping
+        # If force_rescrape is set, delete existing boulders and ascents first, then rescrape
+        if area.scraped_boulders:
+            if force_rescrape:
+                print(
+                    f"\nForce rescrape enabled. Deleting all boulders and ascents "
+                    f"in area '{area.name}' of country '{country.name}'."
+                )
+                print("Press Ctrl+C twice within 10 seconds to cancel...")
+                sleep(10)  # Pause to allow user to cancel if needed
+
+                # Delete all ascents for boulders in the area
+                boulders_in_area = db.scalars(
+                    select(Boulder)
+                    .join(Boulder.sector)
+                    .join(Sector.crag)
+                    .join(Crag.area)
+                    .where(Area.slug == area.slug)
+                ).all()
+                for boulder in boulders_in_area:
+                    db.query(Ascent).filter(
+                        Ascent.boulder_id == boulder.id
+                    ).delete(synchronize_session=False)
+                    db.delete(boulder)
+                db.commit()
+                # Reset area scraping status
+                area.scraped_boulders = False
+                area.scraping_resume_page = None
+                area.scraping_resume_grade_correspondence = None
+                area.boulder_scrape_error = None
+                db.add(area)
+                db.commit()
+                print("Deletion complete. Starting rescrape...\n")
+            else:
+                print(
+                    f"\nArea '{area.name}' in country '{country.name}' has already been fully scraped."
+                )
+                print(
+                    "Use --delete-and-rescrape-entire-area to scrape again.\n"
+                    "This will delete all boulders and ascents and rescrape from scratch.\n"
+                )
+                return
+
+        # Get all grades
+        grades: list[Grade] = Grade.get_by_min_max_value(db, min_value="6A")
 
         # Determine starting page index
         page_index = None
-        if not area.scraped_boulders and area.scraping_resume_page is not None:
+        if area.scraping_resume_page is not None:
             page_index = area.scraping_resume_page
 
         # Scrape boulders by grade
@@ -70,6 +118,7 @@ def scrape_area(country_arg: str, area_arg: str):
 
         # Mark area as fully scraped
         area.mark_as_scraped(db)
+    print("\nArea scraped successfully. All boulders fetched.\n")
 
 
 def scrape_boulders_by_grade(
