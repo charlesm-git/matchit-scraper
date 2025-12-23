@@ -7,6 +7,7 @@ import requests
 from sqlalchemy import select
 from sqlalchemy.orm import scoped_session
 
+from config import AUTHENTICATION_COOKIE
 from database import Session
 from models.area import Area
 from models.ascent import Ascent
@@ -18,6 +19,7 @@ from models.user import User
 from scraping.fetch import fetch
 from scraping.helper import text_normalizer
 from scraping import helper
+
 
 def scrape_ascents_for_boulders_in_area(area_slug: str):
     """Scrape ascents for all boulders in the specified area."""
@@ -38,6 +40,7 @@ def scrape_ascents_for_boulders_in_area(area_slug: str):
 
         for boulder in boulders:
             scrape_ascents_from_boulder(db, boulder)
+
 
 def scrape_ascents_from_boulder(db: scoped_session, boulder: Boulder):
     """Scrape ascents for a given boulder URL and store them in the database."""
@@ -71,14 +74,13 @@ def scrape_ascents_from_boulder(db: scoped_session, boulder: Boulder):
         if page_index > 0:
             referer += f"?page={page_index + 1}"
 
-        authentication_cookie = "9d45b86f-3cf9-425d-a3cb-cbffcfac1d7b"
-
         # Fetch ascents data from API
         try:
             response = fetch(
                 url=api_url,
+                random_headers=False,
                 referer=referer,
-                authentication_cookie=authentication_cookie,
+                authentication_cookie=AUTHENTICATION_COOKIE,
             )
             retry_count = 0
         except requests.exceptions.Timeout as e:
@@ -161,7 +163,9 @@ def scrape_ascents_from_boulder(db: scoped_session, boulder: Boulder):
 
             grade = Grade.get_by_correspondence(db, item.get("zlagGradeIndex"))
             if not grade and item.get("zlagGradeIndex") is not None:
-                print(f"Unknown grade correspondence for index {item.get('zlagGradeIndex')}")
+                print(
+                    f"Unknown grade correspondence for index {item.get('zlagGradeIndex')}"
+                )
                 print(f"Skipping ascent by user {user.name}")
 
             ascent = Ascent()

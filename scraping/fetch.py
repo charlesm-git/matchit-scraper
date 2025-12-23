@@ -54,19 +54,21 @@ ACCEPT_LANGUAGES = [
 ]
 
 
-def generate_realistic_cookies() -> Dict[str, str]:
+def get_random_cookies() -> Dict[str, str]:
     """Generate realistic 8a.nu cookies to mimic normal user session."""
     categories = ["sportclimbing", "bouldering"]
     color_themes = ["system", "light", "dark"]
     periods = ["3", "6", "12", "24"]
 
     # Generate realistic Stripe mid (UUID-like format with timestamp)
-    stripe_mid = str(uuid.uuid4()).replace("-", "")[:32]
+    stripe_mid = str(uuid.uuid4())
 
     return {
         "color-value": random.choice(color_themes),
         "ranking-sub-navigation__recent-category": random.choice(categories),
-        "user-ascent-statistics__recent-period-bouldering": random.choice(periods),
+        "user-ascent-statistics__recent-period-bouldering": random.choice(
+            periods
+        ),
         "__stripe_mid": stripe_mid,
     }
 
@@ -96,9 +98,35 @@ def get_random_headers(referer: Optional[str] = None) -> Dict[str, str]:
 
     return headers
 
+def get_static_cookies() -> Dict[str, str]:
+    """Generate static cookies for requests."""
+    return {
+        "color-value": "system",
+        "ranking-sub-navigation__recent-category": "sportclimbing",
+        "user-ascent-statistics__recent-period-bouldering": "12",
+        "__stripe_mid": "018d25f0-6232-4a73-84a2-48793809c41697b668",
+    }
+
+def get_static_headers() -> Dict[str, str]:
+    """Generate static browser headers for requests."""
+    headers = {
+        "accept": "*/*",
+        "accept-language": "en-US,en;q=0.9",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-origin",
+        "sec-ch-ua": '"Chromium";v="130", "Not?A_Brand";v="99", "Google Chrome";v="130"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "sec-gpc": "1",
+    }
+    return headers
+
 
 def fetch(
     url: str,
+    random_headers: bool = True,
     referer: Optional[str] = None,
     timeout: int = 30,
     authentication_cookie: str = None,
@@ -115,9 +143,13 @@ def fetch(
     Returns:
         JSON response as dict, or None on failure
     """
-    request_headers = get_random_headers(referer=referer)
-    cookies = generate_realistic_cookies()
-    
+    if random_headers:
+        request_headers = get_random_headers(referer=referer)
+        cookies = get_random_cookies()
+    else:
+        request_headers = get_static_headers()
+        cookies = get_static_cookies()
+
     if authentication_cookie:
         cookies["nu8a_session"] = authentication_cookie
 

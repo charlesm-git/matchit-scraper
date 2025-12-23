@@ -20,3 +20,5 @@ VALID_COUNTRY_AREAS = {
     "switzerland": ["ticino"],
     "france": ["fontainebleau"],
 }
+
+AUTHENTICATION_COOKIE = "a8ca6c30-b0f4-40d9-b509-a7566eb36a4d"
