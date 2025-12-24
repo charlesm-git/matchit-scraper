@@ -14,14 +14,13 @@ from models.ascent import Ascent
 from models.boulder import Boulder
 from models.crag import Crag
 from models.grade import Grade
-from models.sector import Sector
 from models.user import User
 from scraping import helper
 from scraping.fetch import fetch
 
 
 def scrape_ascents_for_boulders_in_area(
-    area_slug: str, force_rescrape: bool = False
+    area_config: dict, force_rescrape: bool = False
 ):
     """Scrape ascents for all boulders in the specified area."""
     signal.signal(signal.SIGINT, helper.signal_handler)
@@ -30,7 +29,7 @@ def scrape_ascents_for_boulders_in_area(
         # Handle force rescrape option
         if force_rescrape:
             print(
-                f"Force rescrape enabled. Rescraping all boulders in area '{area_slug}'."
+                f"Force rescrape enabled. Rescraping all boulders in area '{area_config['area_name']}'."
             )
             print("Press Ctrl+C twice within 10 seconds to cancel.")
             sleep(10)
@@ -38,10 +37,9 @@ def scrape_ascents_for_boulders_in_area(
             # Delete ascents for all boulders in the area
             boulders_in_area = db.scalars(
                 select(Boulder)
-                .join(Boulder.sector)
-                .join(Sector.crag)
+                .join(Boulder.crag)
                 .join(Crag.area)
-                .where(Area.slug == area_slug)
+                .where(Area.slug == area_config["area_slug"])
             ).all()
 
             for boulder in boulders_in_area:
@@ -54,17 +52,16 @@ def scrape_ascents_for_boulders_in_area(
                 boulder.scraped_ascents = False
                 db.add(boulder)
             db.commit()
-            print(f"Deleted all ascents for boulders in area '{area_slug}'")
+            print(f"Deleted all ascents for boulders in area '{area_config['area_name']}'")
 
-        print(f"Starting ascent scraping for area '{area_slug}'")
+        print(f"Starting ascent scraping for area '{area_config['area_name']}'")
         # Fetch boulders that need ascents scraped
         boulders = db.scalars(
             select(Boulder)
-            .join(Boulder.sector)
-            .join(Sector.crag)
+            .join(Boulder.crag)
             .join(Crag.area)
             .where(
-                Area.slug == area_slug,
+                Area.slug == area_config["area_slug"],
                 Boulder.scraped_ascents == False,
             )
             .order_by(Boulder.last_ascent_scrape_attempt.asc().nullsfirst())
@@ -73,7 +70,7 @@ def scrape_ascents_for_boulders_in_area(
         # If no boulders to scrape, exit
         if not boulders:
             print(
-                f"All boulders in the database for area '{area_slug}' have already been scraped."
+                f"All boulders in the database for area '{area_config['area_name']}' have already been scraped."
             )
             print(
                 f"Use --delete-and-rescrape-all-ascents to force rescraping."
@@ -83,10 +80,10 @@ def scrape_ascents_for_boulders_in_area(
 
         # Scrape ascents for each boulder
         for boulder in boulders:
-            scrape_ascents_from_boulder(db, boulder)
+            scrape_ascents_from_boulder(db, area_config, boulder)
 
 
-def scrape_ascents_from_boulder(db: scoped_session, boulder: Boulder):
+def scrape_ascents_from_boulder(db: scoped_session, area_config: dict, boulder: Boulder):
     """Scrape ascents for a given boulder URL and store them in the database."""
     retry_count = 0
     max_retries = 3
@@ -104,12 +101,18 @@ def scrape_ascents_from_boulder(db: scoped_session, boulder: Boulder):
 
         # Random sleep to avoid rate limiting
         sleep(random.uniform(1, 5))
-
+        
+        
         # Build API URL
+        if area_config["scrape_as_crag"]:
+            url_filler = area_config["area_slug"]
+        else:
+            url_filler = boulder.crag.slug
+        
         api_url = (
             f"https://www.8a.nu/api/unification/ascent/v1/web/crags/bouldering"
-            f"/{boulder.sector.crag.area.country.slug}/{boulder.sector.crag.slug}"
-            f"/sectors/{boulder.sector.slug}/routes/{boulder.slug}"
+            f"/{boulder.crag.area.country.slug}/{url_filler}"
+            f"/sectors/{boulder.sector_slug}/routes/{boulder.slug}"
             f"/ascents?pageIndex={page_index}&sortField=date&order=desc"
         )
 
@@ -205,10 +208,10 @@ def scrape_ascents_from_boulder(db: scoped_session, boulder: Boulder):
                     slug=item.get("userSlug"),
                 )
 
-            grade = Grade.get_by_correspondence(db, item.get("zlagGradeIndex"))
-            if not grade and item.get("zlagGradeIndex") is not None:
+            grade = Grade.get_by_value(db, item.get("difficulty"))
+            if not grade and item.get("difficulty") is not None:
                 print(
-                    f"Unknown grade correspondence for index {item.get('zlagGradeIndex')}"
+                    f"Unknown grade correspondence for 'difficulty' {item.get('difficulty')}"
                 )
                 print(f"Skipping ascent by user {user.name}")
 
@@ -240,7 +243,7 @@ def scrape_ascents_from_boulder(db: scoped_session, boulder: Boulder):
                     ascent.type = None
 
             ascent.with_kneepad = item.get("withKneepad")
-            ascent.is_FA = item.get("firstAscent")
+            ascent.is_fa = item.get("firstAscent")
             ascent.is_soft = item.get("isSoft")
             ascent.is_hard = item.get("isHard")
             ascent.is_repeat = item.get("repeat")
@@ -264,14 +267,15 @@ def scrape_ascents_from_boulder(db: scoped_session, boulder: Boulder):
 
             if helper.shutdown_requested:
                 print(
-                    "\nShutdown requested. Ascents for current boulder will have to be re-scraped."
+                    "\nShutting down. Ascents for current boulder will have to be re-scraped."
                 )
                 sys.exit(0)
         else:
             if helper.shutdown_requested:
                 print(
-                    "\nShutdown requested. Ascents for current boulder will have to be re-scraped."
+                    "\nShutting down. Ascents for current boulder will have to be re-scraped."
                 )
+                sys.exit(0)
             break
 
     # Bulk save ascents to the database

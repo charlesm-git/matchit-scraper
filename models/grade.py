@@ -34,10 +34,16 @@ class Grade(Base):
         )
 
     @classmethod
-    def get_by_min_max_value(cls, db: scoped_session, min_value: str = None, max_value: str = None):
+    def get_by_value(cls, db, value):
+        return db.scalar(select(cls).where(cls.value == value))
+
+    @classmethod
+    def get_by_min_max_value(
+        cls, db: scoped_session, min_value: str = None, max_value: str = None
+    ):
         min_value = min_value if min_value is not None else "1"
         max_value = max_value if max_value is not None else "9A+"
-        
+
         min_corr = db.scalar(
             select(cls.correspondence).where(cls.value == min_value)
         )

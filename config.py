@@ -17,8 +17,90 @@ GIT_BRANCH = "main"
 REMOTE_NAME = "origin"
 
 VALID_COUNTRY_AREAS = {
-    "switzerland": ["ticino"],
-    "france": ["fontainebleau"],
+    "austria": [
+        {
+            "area": "silvretta",
+            "area_slug": "silvretta",
+            "area_name": "Silvretta",
+            "scrape_as_crag": True,
+            "use_synthetic_crag": False,
+        }
+    ],
+    "france": [
+        {
+            "area": "fontainebleau",
+            "area_slug": "fontainebleau",
+            "area_name": "Fontainebleau",
+            "scrape_as_crag": False,
+            "use_synthetic_crag": False,
+        }
+    ],
+    "italy": [
+        {
+            "area": "val-daone",
+            "area_slug": "val-daone",
+            "area_name": "Val Daone",
+            "scrape_as_crag": False,
+            "use_synthetic_crag": True,
+        },
+        {
+            "area": "val-di-mello",
+            "area_slug": "val-di-mello",
+            "area_name": "Val di Mello",
+            "scrape_as_crag": False,
+            "use_synthetic_crag": True,
+        },
+    ],
+    "spain": [
+        {
+            "area": "albarracin",
+            "area_slug": "unknown-crag",
+            "area_name": "Albarracín",
+            "scrape_as_crag": True,
+            "use_synthetic_crag": False,
+        }
+    ],
+    "sweden": [
+        {
+            "area": "vastervik",
+            "area_slug": "vaestervik",
+            "area_name": "Västervik",
+            "scrape_as_crag": True,
+            "use_synthetic_crag": False,
+        }
+    ],
+    "switzerland": [
+        {
+            "area": "bas-valais",
+            "area_slug": "bas-valais",
+            "area_name": "Bas-Valais",
+            "scrape_as_crag": False,
+            "use_synthetic_crag": False,
+        },
+        {
+            "area": "magic-wood",
+            "area_slug": "magic-wood",
+            "area_name": "Magic Wood",
+            "scrape_as_crag": True,
+            "use_synthetic_crag": True,
+        },
+        {
+            "area": "ticino",
+            "area_slug": "ticino",
+            "area_name": "Ticino",
+            "scrape_as_crag": False,
+            "use_synthetic_crag": False,
+        },
+    ],
+    "south-africa": [
+        {
+            "area": "rocklands",
+            "area_slug": "rocklands",
+            "area_name": "Rocklands",
+            "scrape_as_crag": False,
+            "use_synthetic_crag": False,
+        }
+    ],
 }
 
 AUTHENTICATION_COOKIE = "a8ca6c30-b0f4-40d9-b509-a7566eb36a4d"

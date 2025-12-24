@@ -152,7 +152,7 @@ def fetch(
 
     if authentication_cookie:
         cookies["nu8a_session"] = authentication_cookie
-
+    
     response = requests.get(
         url, headers=request_headers, cookies=cookies, timeout=timeout
     )

@@ -15,7 +15,7 @@ from sqlalchemy import (
 from models.base import Base
 import models.grade
 import models.ascent
-import models.sector
+import models.crag
 
 
 class Boulder(Base):
@@ -35,6 +35,9 @@ class Boulder(Base):
     )  # e.g., 1 for Boulder, 0 for Route
     rating: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
+    sector_slug: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    sector_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
     # Scraping status
     scraped_ascents: Mapped[bool] = mapped_column(Boolean, default=False)
     scraped_ascents_at: Mapped[Optional[datetime]] = mapped_column(
@@ -47,17 +50,22 @@ class Boulder(Base):
         String, nullable=True
     )
     ascent_retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    
+    # Similarity matrix ID (for future use)
+    similarity_matrix_id: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )
 
     # Foreign Keys
     grade_id: Mapped[int] = mapped_column(ForeignKey("grade.id"))
-    sector_id: Mapped[int] = mapped_column(ForeignKey("sector.id"))
+    crag_id: Mapped[int] = mapped_column(ForeignKey("crag.id"))
 
     # Relationship to other entities via Foreign Keys
     grade: Mapped["models.grade.Grade"] = relationship(
         "Grade", back_populates="boulders", foreign_keys=[grade_id]
     )
-    sector: Mapped["models.sector.Sector"] = relationship(
-        "Sector", back_populates="boulders"
+    crag: Mapped["models.crag.Crag"] = relationship(
+        "Crag", back_populates="boulders"
     )
 
     # Association object for ascents
@@ -77,7 +85,7 @@ class Boulder(Base):
         db.commit()
         db.refresh(self)
         return self
-    
+
     def update_last_ascent_scrape_attempt(self, db):
         self.last_ascent_scrape_attempt = datetime.now()
         db.add(self)

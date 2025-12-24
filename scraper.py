@@ -35,7 +35,7 @@ if __name__ == "__main__":
         action="store_true",
         help="Delete all ascents in the area and rescrape from scratch",
     )
-    
+
     args = parser.parse_args()
 
     # Validate country and area
@@ -43,15 +43,34 @@ if __name__ == "__main__":
         print(f"Error: Unknown country '{args.country}'")
         print(f"Valid countries: {', '.join(VALID_COUNTRY_AREAS.keys())}")
         sys.exit(1)
-    if args.area not in VALID_COUNTRY_AREAS[args.country]:
+
+    # Find area config
+    area_config = next(
+        (
+            config
+            for config in VALID_COUNTRY_AREAS[args.country]
+            if config["area"] == args.area
+        ),
+        None,
+    )
+    if not area_config:
+        valid_areas = [
+            config["area"] for config in VALID_COUNTRY_AREAS[args.country]
+        ]
         print(
             f"Error: Area '{args.area}' not valid for country '{args.country}'"
         )
-        print(f"Valid areas: {', '.join(VALID_COUNTRY_AREAS[args.country])}")
+        print(f"Valid areas: {', '.join(valid_areas)}")
         sys.exit(1)
 
     # Reset database if requested
     if args.reset:
+        confirm = input(
+            "Are you sure you want to reset the database? This will delete all data. (yes/no): "
+        )
+        if confirm.lower() != "yes":
+            print("Database reset cancelled.")
+            sys.exit(0)
         reset_db()
 
     if not args.scrape_boulders and not args.scrape_ascents:
@@ -64,9 +83,13 @@ if __name__ == "__main__":
     if args.scrape_boulders:
         # Determine if force rescrape is needed
         force_rescrape = args.delete_and_rescrape_entire_area
-        scrape_area(args.country, args.area, force_rescrape=force_rescrape)
+        scrape_area(
+            args.country, area_config, force_rescrape=force_rescrape
+        )
 
     # Scrape ascents if requested
     if args.scrape_ascents:
         force_rescrape = args.delete_and_rescrape_all_ascents
-        scrape_ascents_for_boulders_in_area(args.area, force_rescrape=force_rescrape)
+        scrape_ascents_for_boulders_in_area(
+            area_config, force_rescrape=force_rescrape
+        )
