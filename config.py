@@ -92,7 +92,7 @@ VALID_COUNTRY_AREAS = {
             "use_synthetic_crag": False,
         },
     ],
-    "south-africa": [
+    "south africa": [
         {
             "area": "rocklands",
             "area_slug": "rocklands",

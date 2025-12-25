@@ -31,6 +31,8 @@ class Area(Base):
     external_db_id: Mapped[Optional[int]] = mapped_column(
         Integer, nullable=True
     )
+    boulders_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    ascents_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # Foreign Key
     country_id: Mapped[int] = mapped_column(

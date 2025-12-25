@@ -1,10 +1,9 @@
-from calendar import c
 import random
-import select
 import signal
 import sys
 from time import sleep
 from sqlalchemy.orm import scoped_session
+from sqlalchemy import select
 import requests
 
 from database import Session
@@ -161,20 +160,26 @@ def scrape_boulders_by_grade(
             # Build URL with grade directly in query string to avoid encoding issues
             base_url = (
                 f"https://www.8a.nu/api/unification/outdoor/v1/web/zlaggables/bouldering/{country.slug}"
-                f"?sectorSlug&pageIndex={page_index}&sortField=totalascents&grade&searchQuery"
-                f"&order=desc&cragSlug={area.slug}"
+                f"?sectorSlug&pageIndex={page_index}&sortField=name&grade={grade.correspondence},{grade.correspondence}"
+                f"&searchQuery&order=asc&cragSlug={area.slug}"
             )
-            referer = f"https://www.8a.nu/crags/bouldering/{country.slug}/{area.slug}/routes?grade={grade.correspondence},{grade.correspondence}"
+            referer = (
+                f"https://www.8a.nu/crags/bouldering/{country.slug}/{area.slug}/routes"
+                f"?grade={grade.correspondence},{grade.correspondence}&sortField=name&order=asc"
+            )
             if page_index > 0:
                 referer += f"&page={page_index + 1}"
         else:
             # Build URL with grade directly in query string to avoid encoding issues
             base_url = (
                 f"https://www.8a.nu/api/unification/outdoor/v1/web/zlaggables/1/{country.slug}"
-                f"?pageIndex={page_index}&grade={grade.correspondence},{grade.correspondence}&sortField=totalascents"
-                f"&order=desc&areaSlug={area.slug}"
+                f"?pageIndex={page_index}&grade={grade.correspondence},{grade.correspondence}&sortField=name"
+                f"&order=asc&areaSlug={area.slug}"
             )
-            referer = f"https://www.8a.nu/areas/{country.slug}/{area.slug}/bouldering?grade={grade.correspondence},{grade.correspondence}"
+            referer = (
+                f"https://www.8a.nu/areas/{country.slug}/{area.slug}/bouldering"
+                f"?grade={grade.correspondence},{grade.correspondence}&sortField=name&order=asc"
+            )
             if page_index > 0:
                 referer += f"&page={page_index + 1}"
 
@@ -241,10 +246,13 @@ def scrape_boulders_by_grade(
         for item in items:
             boulder_name = item.get("zlaggableName")
 
-            # Skip boulders with name "N.N." or with zero ascents
+            # Skip boulders with name "N.N." or similar
+            # Also skip boulders with zero ascents
             if (
-                boulder_name.startswith("N.N.") or boulder_name.startswith("N.n.")
-                or item.get("totalAscents") == 0
+                boulder_name == "N.N."
+                or boulder_name == "N.n."
+                or boulder_name == "n.n."
+                or item.get("totalAscents", 0) == 0
             ):
                 continue
 
@@ -317,6 +325,7 @@ def scrape_boulders_by_grade(
 
             db.add(boulder)
         db.commit()
+        
         if pagination.get("hasNext"):
             page_index += 1
             area.update_scraping_resume_page(db, page_index)

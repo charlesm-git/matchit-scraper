@@ -2,22 +2,18 @@ import sqlite3
 from pathlib import Path
 
 # Database path
-DB_PATH = Path(__file__).parent / "matchit.db"
+DB_PATH = "../matchit.db"
 
 # SQL statements to execute
 # Update this section with your migration SQL
 SQL_STATEMENTS = """
-ALTER TABLE boulder ADD COLUMN similarity_matrix_id INTEGER;
+-- Write your SQL migration statements here
 """
 
 
 def run_migration():
     """Execute SQL migration on the database."""
     print(f"Connecting to database: {DB_PATH}")
-
-    if not DB_PATH.exists():
-        print(f"ERROR: Database file not found at {DB_PATH}")
-        return
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
