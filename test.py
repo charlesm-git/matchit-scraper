@@ -1,7 +1,9 @@
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
+from models.area import Area
 from models.boulder import Boulder
+from models.crag import Crag
 from models.grade import Grade
 
 
@@ -12,7 +14,20 @@ engine = create_engine(DATABASE_URL, echo=False)
 
 session = Session(bind=engine)
 
-grades = Grade.get_by_min_max_value(session, min_value="6A")
+area = 'ticino'
 
-for grade in grades:
-    print(grade)
+boulders_with_ascents = session.scalars(
+    select(func.count(Boulder.id))
+    .join(Boulder.crag)
+    .join(Crag.area)
+    .where(Boulder.ascents.any(), Area.slug == area)
+).all()
+
+boulders = session.scalars(
+    select(func.count(Boulder.id))
+    .join(Boulder.crag)
+    .join(Crag.area)
+    .where(Area.slug == area)
+).all()
+
+print(f'Boulders with ascents: {boulders_with_ascents[0]} / {boulders[0]}')

@@ -8,43 +8,14 @@ DB_PATH = Path(__file__).parent.parent / "matchit.db"
 # SQL statements to execute
 # Update this section with your migration SQL
 SQL_STATEMENTS = """
--- Write your SQL migration statements here
-UPDATE grade SET correspondence =
-    CASE value
-        WHEN '1' THEN 1
-        WHEN '2' THEN 2
-        WHEN '3A' THEN 3
-        WHEN '3B' THEN 4
-        WHEN '3C' THEN 5
-        WHEN '4A' THEN 6
-        WHEN '4B' THEN 7
-        WHEN '4C' THEN 8
-        WHEN '5A' THEN 9
-        WHEN '5B' THEN 10
-        WHEN '5C' THEN 11
-        WHEN '6A' THEN 12
-        WHEN '6A+' THEN 13
-        WHEN '6B' THEN 14
-        WHEN '6B+' THEN 15
-        WHEN '6C' THEN 16
-        WHEN '6C+' THEN 17
-        WHEN '7A' THEN 18
-        WHEN '7A+' THEN 19
-        WHEN '7B' THEN 20
-        WHEN '7B+' THEN 21
-        WHEN '7C' THEN 22
-        WHEN '7C+' THEN 23
-        WHEN '8A' THEN 24
-        WHEN '8A+' THEN 25
-        WHEN '8B' THEN 26
-        WHEN '8B+' THEN 27
-        WHEN '8C' THEN 28
-        WHEN '8C+' THEN 29
-        WHEN '9A' THEN 30
-        WHEN '9A+' THEN 31
-    END;
+-- Add indexes on foreign keys for performance
+CREATE INDEX IF NOT EXISTS ix_ascent_boulder_id ON ascent (boulder_id);
+CREATE INDEX IF NOT EXISTS ix_ascent_user_id ON ascent (user_id);
+CREATE INDEX IF NOT EXISTS ix_ascent_log_grade_id ON ascent (log_grade_id);
+CREATE INDEX IF NOT EXISTS ix_boulder_grade_id ON boulder (grade_id);
+CREATE INDEX IF NOT EXISTS ix_boulder_crag_id ON boulder (crag_id);
+CREATE INDEX IF NOT EXISTS ix_crag_area_id ON crag (area_id);
 """
-
 
 def run_migration():
     """Execute SQL migration on the database."""
