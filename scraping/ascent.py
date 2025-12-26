@@ -4,19 +4,20 @@ import signal
 import sys
 from time import sleep
 import requests
-from sqlalchemy import select
 from sqlalchemy.orm import scoped_session
 
 from config import AUTHENTICATION_COOKIE
 from database import Session
-from models.area import Area
 from models.ascent import Ascent
 from models.boulder import Boulder
-from models.crag import Crag
 from models.grade import Grade
 from models.user import User
 from scraping import helper
 from scraping.fetch import fetch
+from scraping.query import (
+    fetch_all_boulders_in_area,
+    fetch_unscraped_boulders_in_area,
+)
 
 
 def scrape_ascents_for_boulders_in_area(
@@ -35,40 +36,32 @@ def scrape_ascents_for_boulders_in_area(
             sleep(10)
 
             # Delete ascents for all boulders in the area
-            boulders_in_area = db.scalars(
-                select(Boulder)
-                .join(Boulder.crag)
-                .join(Crag.area)
-                .where(Area.slug == area_config["area_slug"])
-            ).all()
+            boulders_in_area = fetch_all_boulders_in_area(
+                db, area_config["area_slug"]
+            )
 
             for boulder in boulders_in_area:
-                deleted_count = (
-                    db.query(Ascent)
-                    .filter(Ascent.boulder_id == boulder.id)
-                    .delete(synchronize_session=False)
-                )
+                db.query(Ascent).filter(
+                    Ascent.boulder_id == boulder.id
+                ).delete(synchronize_session=False)
                 # Mark boulder as not scraped
                 boulder.scraped_ascents = False
                 db.add(boulder)
             db.commit()
-            print(f"Deleted all ascents for boulders in area '{area_config['area_name']}'")
-
-        print(f"Starting ascent scraping for area '{area_config['area_name']}'")
-        # Fetch boulders that need ascents scraped
-        boulders = db.scalars(
-            select(Boulder)
-            .join(Boulder.crag)
-            .join(Crag.area)
-            .where(
-                Area.slug == area_config["area_slug"],
-                Boulder.scraped_ascents == False,
+            print(
+                f"Deleted all ascents for boulders in area '{area_config['area_name']}'"
             )
-            .order_by(Boulder.last_ascent_scrape_attempt.asc().nullsfirst())
-        ).all()
+
+        print(
+            f"Starting ascent scraping for area '{area_config['area_name']}'"
+        )
+        # Fetch boulders that need ascents scraped
+        unscraped_boulders = fetch_unscraped_boulders_in_area(
+            db, area_config["area_slug"]
+        )
 
         # If no boulders to scrape, exit
-        if not boulders:
+        if not unscraped_boulders:
             print(
                 f"All boulders in the database for area '{area_config['area_name']}' have already been scraped."
             )
@@ -79,11 +72,13 @@ def scrape_ascents_for_boulders_in_area(
             return
 
         # Scrape ascents for each boulder
-        for boulder in boulders:
+        for boulder in unscraped_boulders:
             scrape_ascents_from_boulder(db, area_config, boulder)
 
 
-def scrape_ascents_from_boulder(db: scoped_session, area_config: dict, boulder: Boulder):
+def scrape_ascents_from_boulder(
+    db: scoped_session, area_config: dict, boulder: Boulder
+):
     """Scrape ascents for a given boulder URL and store them in the database."""
     retry_count = 0
     max_retries = 3
@@ -101,14 +96,13 @@ def scrape_ascents_from_boulder(db: scoped_session, area_config: dict, boulder: 
 
         # Random sleep to avoid rate limiting
         sleep(random.uniform(1, 5))
-        
-        
+
         # Build API URL
         if area_config["scrape_as_crag"]:
             url_filler = area_config["area_slug"]
         else:
             url_filler = boulder.crag.slug
-        
+
         api_url = (
             f"https://www.8a.nu/api/unification/ascent/v1/web/crags/bouldering"
             f"/{boulder.crag.area.country.slug}/{url_filler}"
@@ -204,7 +198,9 @@ def scrape_ascents_from_boulder(db: scoped_session, area_config: dict, boulder: 
                 user: User = User.create(
                     db,
                     name=item.get("userName"),
-                    name_normalized=helper.text_normalizer(item.get("userName")),
+                    name_normalized=helper.text_normalizer(
+                        item.get("userName")
+                    ),
                     slug=item.get("userSlug"),
                 )
 

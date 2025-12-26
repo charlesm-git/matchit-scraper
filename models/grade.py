@@ -15,6 +15,7 @@ class Grade(Base):
     )
     value: Mapped[str] = mapped_column(String(3))
     correspondence: Mapped[int] = mapped_column(SmallInteger)
+    eightanu_correspondence: Mapped[int] = mapped_column(SmallInteger)
 
     # Relationship
     boulders: Mapped[List["models.boulder.Boulder"]] = relationship(
@@ -31,6 +32,14 @@ class Grade(Base):
     def get_by_correspondence(cls, db, correspondence_value):
         return db.scalar(
             select(cls).where(cls.correspondence == correspondence_value)
+        )
+        
+    @classmethod
+    def get_by_eightanu_correspondence(cls, db, eightanu_correspondence_value):
+        return db.scalar(
+            select(cls).where(
+                cls.eightanu_correspondence == eightanu_correspondence_value
+            )
         )
 
     @classmethod

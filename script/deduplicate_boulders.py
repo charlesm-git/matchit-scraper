@@ -2,6 +2,7 @@
 Script to find and merge duplicate boulders with slight name variations.
 Focuses on boulders in the same crag with similar grades and similar names.
 """
+
 import sys
 from pathlib import Path
 
@@ -90,7 +91,8 @@ def find_duplicate_groups(
 
                     # Check if grades are close enough
                     grade_diff = abs(
-                        boulder1.grade.correspondence - boulder2.grade.correspondence
+                        boulder1.grade.correspondence
+                        - boulder2.grade.correspondence
                     )
                     if grade_diff > grade_tolerance:
                         # Since sorted, no point checking further
@@ -140,10 +142,10 @@ def merge_boulder_group(
 ) -> Tuple[Boulder, List[Boulder]]:
     """
     Merge a group of duplicate boulders.
-    Moves all ascents to the boulder with the most ascents, deletes the rest.
+    Moves all ascents to the boulder with the most ascents. Keeps all boulders.
 
     Returns:
-        Tuple of (target_boulder, deleted_boulders)
+        Tuple of (target_boulder, source_boulders)
     """
     # Sort by ascent count (descending) to get the boulder with most ascents
     group_with_counts = [(boulder, len(boulder.ascents)) for boulder in group]
@@ -161,7 +163,9 @@ def merge_boulder_group(
     total_moved = 0
     for duplicate in duplicates:
         ascent_count = len(duplicate.ascents)
-        print(f"    - {duplicate.name} (ID: {duplicate.id}): {ascent_count} ascents")
+        print(
+            f"    - {duplicate.name} (ID: {duplicate.id}): {ascent_count} ascents"
+        )
 
         if not dry_run:
             # Move all ascents to target boulder
@@ -173,15 +177,10 @@ def merge_boulder_group(
 
     if not dry_run:
         db.commit()
-
-        # Delete duplicate boulders
-        for duplicate in duplicates:
-            db.delete(duplicate)
-
-        db.commit()
         print(
-            f"\n  ✓ Merged {total_moved} ascents and deleted {len(duplicates)} duplicate boulder(s)"
+            f"\n  ✓ Merged {total_moved} ascents from {len(duplicates)} duplicate boulder(s)"
         )
+        print(f"  Note: Duplicate boulders kept for potential re-scraping")
     else:
         print(
             f"\n  [DRY RUN] Would merge {sum(len(d.ascents) for d in duplicates)} ascents"

@@ -6,7 +6,7 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy import select
 import requests
 
-from database import Session
+from database import GRADES_TO_SCRAPE, Session
 from models.area import Area
 from models.ascent import Ascent
 from models.boulder import Boulder
@@ -16,10 +16,11 @@ from models.grade import Grade
 from scraping.fetch import fetch
 from scraping.helper import signal_handler, text_normalizer
 from scraping import helper
+from scraping.query import fetch_all_boulders_in_area
 
 
 def scrape_area(
-    country_slug: str,
+    country_normalized_name: str,
     area_config: dict,
     force_rescrape: bool = False,
 ):
@@ -28,16 +29,18 @@ def scrape_area(
 
     with Session() as db:
         # Ensure country and area exist
-        country: Country = Country.get_by_slug(db, country_slug)
+        country: Country = Country.get_by_normalized_name(
+            db, country_normalized_name
+        )
         area: Area = Area.get_by_slug(db, area_config["area_slug"])
 
         # Create country and area if they do not exist
         if not country:
             country = Country.create(
                 db,
-                name=country_slug.capitalize(),
-                name_normalized=country_slug,
-                slug=country_slug,
+                name=country_normalized_name.title(),
+                name_normalized=country_normalized_name,
+                slug=country_normalized_name.replace(" ", "-"),
             )
         if not area:
             # Construct area URL
@@ -68,12 +71,7 @@ def scrape_area(
                 sleep(10)  # Pause to allow user to cancel if needed
 
                 # Delete all ascents for boulders in the area
-                boulders_in_area = db.scalars(
-                    select(Boulder)
-                    .join(Boulder.crag)
-                    .join(Crag.area)
-                    .where(Area.slug == area.slug)
-                ).all()
+                boulders_in_area = fetch_all_boulders_in_area(db, area.slug)
                 for boulder in boulders_in_area:
                     db.query(Ascent).filter(
                         Ascent.boulder_id == boulder.id
@@ -98,27 +96,25 @@ def scrape_area(
                 )
                 return
 
-        # Get all grades
-        grades: list[Grade] = Grade.get_by_min_max_value(db, min_value="6A")
-
         # Determine starting page index
         page_index = None
         if area.scraping_resume_page is not None:
             page_index = area.scraping_resume_page
 
         # Scrape boulders by grade
-        for i, grade in enumerate(grades):
+        for i, grade in enumerate(GRADES_TO_SCRAPE):
             # Skip grades already scraped
             if (
                 area.scraping_resume_grade_correspondence
-                and grade.correspondence
-                < area.scraping_resume_grade_correspondence
+                and grade < area.scraping_resume_grade_correspondence
             ):
                 continue
 
             # Get next grade correspondence for checkpointing
-            next_grade_corr = (
-                grades[i + 1].correspondence if i + 1 < len(grades) else None
+            next_grade = (
+                GRADES_TO_SCRAPE[i + 1]
+                if i + 1 < len(GRADES_TO_SCRAPE)
+                else None
             )
             scrape_boulders_by_grade(
                 db,
@@ -127,7 +123,7 @@ def scrape_area(
                 grade,
                 area_config,
                 page_index,
-                next_grade_corr,
+                next_grade,
             )
 
         # Mark area as fully scraped
@@ -139,7 +135,7 @@ def scrape_boulders_by_grade(
     db: scoped_session,
     country: Country,
     area: Area,
-    grade: Grade,
+    grade_correspondence: int,
     area_config: dict,
     page_index: int = None,
     next_grade_correspondence: int = None,
@@ -149,9 +145,14 @@ def scrape_boulders_by_grade(
     retry_count = 0
     max_retries = 3
 
+    db_grade_correspondence = (
+        grade_correspondence if grade_correspondence != 20 else 19
+    )
+    grade = Grade.get_by_eightanu_correspondence(db, db_grade_correspondence)
+
     while True:
         print(
-            f"Scraping boulders for grade {grade} in area {area.name} (page {page_index})"
+            f"Scraping boulders for grade {grade_correspondence} ({grade.value}) in area {area.name} (page {page_index})"
         )
         # Random sleep to avoid rate limiting
         sleep(random.uniform(1, 5))
@@ -160,12 +161,12 @@ def scrape_boulders_by_grade(
             # Build URL with grade directly in query string to avoid encoding issues
             base_url = (
                 f"https://www.8a.nu/api/unification/outdoor/v1/web/zlaggables/bouldering/{country.slug}"
-                f"?sectorSlug&pageIndex={page_index}&sortField=name&grade={grade.correspondence},{grade.correspondence}"
+                f"?sectorSlug&pageIndex={page_index}&sortField=name&grade={grade_correspondence},{grade_correspondence}"
                 f"&searchQuery&order=asc&cragSlug={area.slug}"
             )
             referer = (
                 f"https://www.8a.nu/crags/bouldering/{country.slug}/{area.slug}/routes"
-                f"?grade={grade.correspondence},{grade.correspondence}&sortField=name&order=asc"
+                f"?grade={grade_correspondence},{grade_correspondence}&sortField=name&order=asc"
             )
             if page_index > 0:
                 referer += f"&page={page_index + 1}"
@@ -173,16 +174,18 @@ def scrape_boulders_by_grade(
             # Build URL with grade directly in query string to avoid encoding issues
             base_url = (
                 f"https://www.8a.nu/api/unification/outdoor/v1/web/zlaggables/1/{country.slug}"
-                f"?pageIndex={page_index}&grade={grade.correspondence},{grade.correspondence}&sortField=name"
+                f"?pageIndex={page_index}&grade={grade_correspondence},{grade_correspondence}&sortField=name"
                 f"&order=asc&areaSlug={area.slug}"
             )
             referer = (
                 f"https://www.8a.nu/areas/{country.slug}/{area.slug}/bouldering"
-                f"?grade={grade.correspondence},{grade.correspondence}&sortField=name&order=asc"
+                f"?grade={grade_correspondence},{grade_correspondence}&sortField=name&order=asc"
             )
             if page_index > 0:
                 referer += f"&page={page_index + 1}"
 
+        print(base_url)
+        print(referer)
         try:
             response = fetch(url=base_url, referer=referer)
             retry_count = 0
@@ -242,6 +245,7 @@ def scrape_boulders_by_grade(
 
         items = response.get("items", [])
         pagination = response.get("pagination", {})
+        print(items)
 
         for item in items:
             boulder_name = item.get("zlaggableName")
@@ -325,7 +329,7 @@ def scrape_boulders_by_grade(
 
             db.add(boulder)
         db.commit()
-        
+
         if pagination.get("hasNext"):
             page_index += 1
             area.update_scraping_resume_page(db, page_index)
