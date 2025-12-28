@@ -15,13 +15,15 @@ from models.user import User
 from scraping import helper
 from scraping.fetch import fetch
 from scraping.query import (
+    fetch_all_boulders,
     fetch_all_boulders_in_area,
+    fetch_unscraped_boulders,
     fetch_unscraped_boulders_in_area,
 )
 
 
-def scrape_ascents_for_boulders_in_area(
-    area_config: dict, force_rescrape: bool = False
+def scrape_ascents_for_boulders(
+    area_config: dict = None, force_rescrape: bool = False
 ):
     """Scrape ascents for all boulders in the specified area."""
     signal.signal(signal.SIGINT, helper.signal_handler)
@@ -30,17 +32,22 @@ def scrape_ascents_for_boulders_in_area(
         # Handle force rescrape option
         if force_rescrape:
             print(
-                f"Force rescrape enabled. Rescraping all boulders in area '{area_config['area_name']}'."
+                f"Force rescrape enabled. Deleting current database content for "
+                f"{area_config['area_name'] if area_config else 'entire database'} and rescraping."
             )
-            print("Press Ctrl+C twice within 10 seconds to cancel.")
+            print("\nPress Ctrl+C twice within 10 seconds to cancel.\n")
             sleep(10)
 
-            # Delete ascents for all boulders in the area
-            boulders_in_area = fetch_all_boulders_in_area(
-                db, area_config["area_slug"]
-            )
+            # Fetch all boulders (in area if specified)
+            if area_config is None:
+                boulders = fetch_all_boulders(db)
+            else:
+                boulders = fetch_all_boulders_in_area(
+                    db, area_config["area_slug"]
+                )
 
-            for boulder in boulders_in_area:
+            # Delete all ascents for these boulders
+            for boulder in boulders:
                 db.query(Ascent).filter(
                     Ascent.boulder_id == boulder.id
                 ).delete(synchronize_session=False)
@@ -49,21 +56,29 @@ def scrape_ascents_for_boulders_in_area(
                 db.add(boulder)
             db.commit()
             print(
-                f"Deleted all ascents for boulders in area '{area_config['area_name']}'"
+                f"Deleted all ascents for boulders in {area_config['area_name'] if area_config else 'entire database'}."
             )
 
         print(
-            f"Starting ascent scraping for area '{area_config['area_name']}'"
+            f"\nStarting ascent scraping {area_config['area_name'] if area_config else 'entire database'}"
         )
+
         # Fetch boulders that need ascents scraped
-        unscraped_boulders = fetch_unscraped_boulders_in_area(
-            db, area_config["area_slug"]
+        if area_config is None:
+            unscraped_boulders = fetch_unscraped_boulders(db)
+        else:
+            unscraped_boulders = fetch_unscraped_boulders_in_area(
+                db, area_config["area_slug"]
+            )
+
+        print(
+            f"Found {len(unscraped_boulders)} boulders to scrape ascents for.\n"
         )
 
         # If no boulders to scrape, exit
         if not unscraped_boulders:
             print(
-                f"All boulders in the database for area '{area_config['area_name']}' have already been scraped."
+                f"All boulders in {area_config['area_name'] if area_config else 'entire database'} have already been scraped."
             )
             print(
                 f"Use --delete-and-rescrape-all-ascents to force rescraping."
@@ -73,11 +88,11 @@ def scrape_ascents_for_boulders_in_area(
 
         # Scrape ascents for each boulder
         for boulder in unscraped_boulders:
-            scrape_ascents_from_boulder(db, area_config, boulder)
+            scrape_ascents_from_boulder(db, boulder)
 
 
 def scrape_ascents_from_boulder(
-    db: scoped_session, area_config: dict, boulder: Boulder
+    db: scoped_session, boulder: Boulder
 ):
     """Scrape ascents for a given boulder URL and store them in the database."""
     retry_count = 0
@@ -97,15 +112,9 @@ def scrape_ascents_from_boulder(
         # Random sleep to avoid rate limiting
         sleep(random.uniform(1, 5))
 
-        # Build API URL
-        if area_config["scrape_as_crag"]:
-            url_filler = area_config["area_slug"]
-        else:
-            url_filler = boulder.crag.slug
-
         api_url = (
             f"https://www.8a.nu/api/unification/ascent/v1/web/crags/bouldering"
-            f"/{boulder.crag.area.country.slug}/{url_filler}"
+            f"/{boulder.crag.area.country.slug}/{boulder.crag_slug}"
             f"/sectors/{boulder.sector_slug}/routes/{boulder.slug}"
             f"/ascents?pageIndex={page_index}&sortField=date&order=desc"
         )
@@ -280,4 +289,4 @@ def scrape_ascents_from_boulder(
     # Mark boulder as scraped
     boulder.mark_as_scraped(db)
 
-    print(f"Scraped {len(ascents)} ascents for boulder {boulder.name}")
+    print(f"Scraped {len(ascents)} ascents for boulder {boulder.name}\n")

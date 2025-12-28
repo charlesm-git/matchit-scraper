@@ -6,10 +6,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import argparse
 
-from config import VALID_COUNTRY_AREAS
 from database import drop_tables, initialize_empty_db
-from scraping.ascent import scrape_ascents_for_boulders_in_area
+from scraping.ascent import scrape_ascents_for_boulders
 from scraping.boulder import scrape_area
+from scraping.helper import (
+    check_area_validity,
+    check_country_validity,
+    retrieve_area_config,
+)
 
 
 def reset_db():
@@ -19,8 +23,8 @@ def reset_db():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--country", required=True, help="Country slug")
-    parser.add_argument("-a", "--area", required=True, help="Area slug")
+    parser.add_argument("-c", "--country", help="Country slug")
+    parser.add_argument("-a", "--area", help="Area slug")
     parser.add_argument(
         "--reset", action="store_true", help="Reset database before scraping"
     )
@@ -43,31 +47,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Validate country and area
-    if args.country not in VALID_COUNTRY_AREAS:
-        print(f"Error: Unknown country '{args.country}'")
-        print(f"Valid countries: {', '.join(VALID_COUNTRY_AREAS.keys())}")
-        sys.exit(1)
-
-    # Find area config
-    area_config = next(
-        (
-            config
-            for config in VALID_COUNTRY_AREAS[args.country]
-            if config["area"] == args.area
-        ),
-        None,
-    )
-    if not area_config:
-        valid_areas = [
-            config["area"] for config in VALID_COUNTRY_AREAS[args.country]
-        ]
-        print(
-            f"Error: Area '{args.area}' not valid for country '{args.country}'"
-        )
-        print(f"Valid areas: {', '.join(valid_areas)}")
-        sys.exit(1)
-
     # Reset database if requested
     if args.reset:
         confirm = input(
@@ -86,15 +65,46 @@ if __name__ == "__main__":
 
     # Scrape boulders if requested
     if args.scrape_boulders:
+        if not args.country or not args.area:
+            print("Specify both country and area to scrape boulders.")
+            sys.exit(0)
+
+        if not check_country_validity(args.country):
+            print(f"Invalid country slug: {args.country}")
+            sys.exit(0)
+
+        if not check_area_validity(args.country, args.area):
+            print(
+                f"Invalid area slug: {args.area} for country: {args.country}"
+            )
+            sys.exit(0)
+
+        # Retrieve area configuration
+        area_config = retrieve_area_config(args.country, args.area)
+
         # Determine if force rescrape is needed
         force_rescrape = args.delete_and_rescrape_entire_area
-        scrape_area(
-            args.country, area_config, force_rescrape=force_rescrape
-        )
+        scrape_area(args.country, area_config, force_rescrape=force_rescrape)
 
     # Scrape ascents if requested
     if args.scrape_ascents:
         force_rescrape = args.delete_and_rescrape_all_ascents
-        scrape_ascents_for_boulders_in_area(
-            area_config, force_rescrape=force_rescrape
-        )
+
+        if not args.country or not args.area:
+            print(
+                "\nNo country or area specified, scraping ascents for all areas."
+            )
+            scrape_ascents_for_boulders(force_rescrape=force_rescrape)
+
+        if not check_country_validity(args.country):
+            print(f"\nInvalid country slug: {args.country}")
+            sys.exit(0)
+
+        if not check_area_validity(args.country, args.area):
+            print(
+                f"\nInvalid area slug: {args.area} for country: {args.country}"
+            )
+            sys.exit(0)
+
+        area_config = retrieve_area_config(args.country, args.area)
+        scrape_ascents_for_boulders(area_config, force_rescrape=force_rescrape)

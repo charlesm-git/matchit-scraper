@@ -37,6 +37,8 @@ class Boulder(Base):
 
     sector_slug: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     sector_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    crag_slug: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    crag_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # Scraping status
     scraped_ascents: Mapped[bool] = mapped_column(Boolean, default=False)
