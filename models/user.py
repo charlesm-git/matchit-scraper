@@ -24,7 +24,7 @@ class User(Base):
     )
 
     def __repr__(self):
-        return f"<User(id: {self.id}, username: {self.username})>"
+        return f"<User(id: {self.id}, username: {self.name})>"
 
     @classmethod
     def get_by_slug(cls, db, slug_value: str):

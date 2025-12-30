@@ -76,7 +76,7 @@ class Boulder(Base):
     )
 
     def __repr__(self):
-        return f"<Boulder(name: {self.name}, grade: {self.grade.value}, Ascents: {self.ascents})"
+        return f"<Boulder(name: {self.name}, grade: {self.grade.value}, Ascents: {len(self.ascents)})>"
 
     def mark_as_scraped(self, db):
         self.scraped_ascents = True

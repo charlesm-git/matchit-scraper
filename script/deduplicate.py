@@ -35,7 +35,6 @@ Examples:
 import re
 import sys
 from pathlib import Path
-
 # Add parent directory to path to import project modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -43,12 +42,13 @@ import argparse
 from collections import defaultdict
 from typing import List, Tuple
 from rapidfuzz import fuzz
-from sqlalchemy import select
+from sqlalchemy import and_, not_, or_, select
 from sqlalchemy.orm import joinedload
 
 from database import Session
 from models.boulder import Boulder
 from models.crag import Crag
+from models.grade import Grade
 
 
 # Variation keywords that indicate different versions of the same problem
@@ -121,12 +121,8 @@ def calculate_similarity(
     """
     if algorithm == "ratio":
         return fuzz.ratio(name1, name2)
-    elif algorithm == "partial_ratio":
-        return fuzz.partial_ratio(name1, name2)
     elif algorithm == "token_sort":
         return fuzz.token_sort_ratio(name1, name2)
-    elif algorithm == "token_set":
-        return fuzz.token_set_ratio(name1, name2)
     else:
         return fuzz.ratio(name1, name2)
 
@@ -141,7 +137,19 @@ def fetch_boulders_for_duplicate_check(area_slug: str = None) -> List[Boulder]:
                 joinedload(Boulder.grade),
                 joinedload(Boulder.ascents),
             )
-            .where(Boulder.ascents.any())
+            .join(Boulder.grade)
+            .where(
+                and_(
+                    Boulder.ascents.any(),
+                    not_(
+                        or_(
+                            Boulder.name.ilike("%n.n.%"),
+                            Boulder.name.ilike("%n n%"),
+                        )
+                    ),
+                )
+            )
+            .order_by(Grade.correspondence)
         )  # Only boulders with ascents
 
         # Filter by area if specified
@@ -159,9 +167,9 @@ def fetch_boulders_for_duplicate_check(area_slug: str = None) -> List[Boulder]:
 def find_duplicate_groups(
     min_similarity: int = 85,
     grade_tolerance: int = 2,
-    dry_run: bool = True,
     area_slug: str = None,
     algorithm: str = "ratio",
+    group_by_crag: bool = True,
 ) -> List[List[Boulder]]:
     """
     Find groups of potentially duplicate boulders.
@@ -171,6 +179,7 @@ def find_duplicate_groups(
         grade_tolerance: Max grade value difference to consider boulders as potential duplicates
         dry_run: If True, only show what would be merged without making changes
         area_slug: Optional area slug to limit search to specific area
+        group_by_crag: If True, only compare boulders within the same crag
 
     Returns:
         List of boulder groups that are likely duplicates
@@ -179,25 +188,63 @@ def find_duplicate_groups(
 
     print(f"Analyzing {len(boulders)} boulders for duplicates...")
 
-    # Group boulders by crag
-    boulders_by_crag = defaultdict(list)
-    for boulder in boulders:
-        boulders_by_crag[boulder.crag_id].append(boulder)
-
     duplicate_groups = []
 
-    # Check each crag for duplicates
-    for crag_id, crag_boulders in boulders_by_crag.items():
-        if len(crag_boulders) < 2:
-            continue
+    if group_by_crag:
+        # Group boulders by crag
+        boulders_by_crag = defaultdict(list)
+        for boulder in boulders:
+            boulders_by_crag[boulder.crag_id].append(boulder)
 
-        # Sort by grade for efficient comparison
-        crag_boulders.sort(key=lambda b: b.grade.correspondence)
+        # Check each crag for duplicates
+        for crag_id, crag_boulders in boulders_by_crag.items():
+            if len(crag_boulders) < 2:
+                continue
 
-        # Track which boulders have already been grouped
+            # Sort by grade for efficient comparison
+            crag_boulders.sort(key=lambda b: b.grade.correspondence)
+
+            processed = set()
+
+            for i, boulder1 in enumerate(crag_boulders):
+                if boulder1.id in processed:
+                    continue
+
+                group = [boulder1]
+
+                for boulder2 in crag_boulders[i + 1 :]:
+                    if boulder2.id in processed:
+                        continue
+
+                    grade_diff = abs(
+                        boulder1.grade.correspondence - boulder2.grade.correspondence
+                    )
+                    if grade_diff > grade_tolerance:
+                        if (
+                            boulder2.grade.correspondence
+                            > boulder1.grade.correspondence + grade_tolerance
+                        ):
+                            break
+                        continue
+
+                    similarity = calculate_similarity(
+                        boulder1.name_normalized.lower(),
+                        boulder2.name_normalized.lower(),
+                        algorithm=algorithm,
+                    )
+
+                    if similarity >= min_similarity:
+                        group.append(boulder2)
+                        processed.add(boulder2.id)
+
+                if len(group) > 1:
+                    duplicate_groups.append(group)
+                    processed.add(boulder1.id)
+    else:
+        # Check all boulders across crags
         processed = set()
 
-        for i, boulder1 in enumerate(crag_boulders):
+        for i, boulder1 in enumerate(boulders):
             if boulder1.id in processed:
                 continue
 
@@ -205,14 +252,13 @@ def find_duplicate_groups(
             group = [boulder1]
 
             # Compare with remaining boulders in similar grade range
-            for boulder2 in crag_boulders[i + 1 :]:
+            for boulder2 in boulders[i + 1 :]:
                 if boulder2.id in processed:
                     continue
 
                 # Check if grades are close enough
                 grade_diff = abs(
-                    boulder1.grade.correspondence
-                    - boulder2.grade.correspondence
+                    boulder1.grade.correspondence - boulder2.grade.correspondence
                 )
                 if grade_diff > grade_tolerance:
                     # Since sorted, no point checking further
@@ -275,18 +321,9 @@ def merge_boulder_group(
     target_boulder = group_with_counts[0][0]
     duplicates = [b for b, _ in group_with_counts[1:]]
 
-    print(
-        f"\n  Target boulder (keeping): {target_boulder.name} (ID: {target_boulder.id})"
-    )
-    print(f"  With {len(target_boulder.ascents)} ascents")
-    print(f"\n  Merging from {len(duplicates)} duplicate(s):")
-
     total_moved = 0
     for duplicate in duplicates:
         ascent_count = len(duplicate.ascents)
-        print(
-            f"    - {duplicate.name} (ID: {duplicate.id}): {ascent_count} ascents"
-        )
 
         if not dry_run:
             # Move all ascents to target boulder
@@ -301,11 +338,6 @@ def merge_boulder_group(
         print(
             f"\n  ✓ Merged {total_moved} ascents from {len(duplicates)} duplicate boulder(s)"
         )
-        print(f"  Note: Duplicate boulders kept for potential re-scraping")
-    else:
-        print(
-            f"\n  [DRY RUN] Would merge {sum(len(d.ascents) for d in duplicates)} ascents"
-        )
 
     return target_boulder, duplicates
 
@@ -315,6 +347,7 @@ def interactive_merge(
     grade_tolerance: int = 2,
     area_slug: str = None,
     algorithm: str = "ratio",
+    group_by_crag: bool = True,
 ):
     """
     Interactive mode: show each duplicate group and ask user to confirm merge.
@@ -322,9 +355,9 @@ def interactive_merge(
     duplicate_groups = find_duplicate_groups(
         min_similarity=min_similarity,
         grade_tolerance=grade_tolerance,
-        dry_run=True,
         area_slug=area_slug,
         algorithm=algorithm,
+        group_by_crag=group_by_crag,
     )
 
     if not duplicate_groups:
@@ -361,6 +394,7 @@ def auto_merge(
     algorithm: str = "ratio",
     area_slug: str = None,
     dry_run: bool = True,
+    group_by_crag: bool = True,
 ):
     """
     Automatic mode: merge all groups with high confidence (higher similarity threshold).
@@ -368,9 +402,9 @@ def auto_merge(
     duplicate_groups = find_duplicate_groups(
         min_similarity=min_similarity,
         grade_tolerance=grade_tolerance,
-        dry_run=True,
         area_slug=area_slug,
         algorithm=algorithm,
+        group_by_crag=group_by_crag,
     )
 
     if not duplicate_groups:
@@ -427,9 +461,14 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--algorithm",
-        choices=["ratio", "partial_ratio", "token_sort", "token_set"],
+        choices=["ratio", "token_sort"],
         default="ratio",
-        help="Similarity algorithm: ratio (default, strict), partial_ratio (substring), token_sort (word order), token_set (word sets)",
+        help="Similarity algorithm: ratio (default, strict), token_sort (word order)",
+    )
+    parser.add_argument(
+        "--ignore-crag",
+        action="store_true",
+        help="Compare boulders across all crags (default: only within same crag)",
     )
 
     args = parser.parse_args()
@@ -440,6 +479,7 @@ if __name__ == "__main__":
             grade_tolerance=args.grade_tolerance,
             area_slug=args.area,
             algorithm=args.algorithm,
+            group_by_crag=not args.ignore_crag,
         )
     else:
         # Auto mode with higher default similarity for safety
@@ -450,4 +490,5 @@ if __name__ == "__main__":
             area_slug=args.area,
             dry_run=not args.execute,
             algorithm=args.algorithm,
+            group_by_crag=not args.ignore_crag,
         )
