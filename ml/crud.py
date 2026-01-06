@@ -1,4 +1,4 @@
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, select
 from sqlalchemy.orm import joinedload, scoped_session
 from scipy.sparse import coo_matrix
 import numpy as np
@@ -18,11 +18,9 @@ def get_boulders_for_similarity(session, area_slug):
         .join(Boulder.crag)
         .join(Crag.area)
         .join(Boulder.grade)
-        .join(Boulder.ascents)
         .options(joinedload(Boulder.grade))
-        .where(Area.slug == area_slug)
+        .where(and_(Area.slug == area_slug, Boulder.ascents.any()))
         .order_by(Grade.correspondence, Boulder.name)
-        .distinct()
     ).all()
     return boulders
 
@@ -33,7 +31,12 @@ def get_ascents_for_similarity(session, area_slug):
         .join(Ascent.boulder)
         .join(Boulder.crag)
         .join(Crag.area)
-        .where(Area.slug == area_slug)
+        .where(
+            and_(
+                Area.slug == area_slug,
+                Boulder.similarity_matrix_id.is_not(None),
+            )
+        )
     ).all()
     return ascents
 
@@ -53,6 +56,17 @@ def delete_similarity_data(session, area_slug):
         )
     )
 
+    session.commit()
+
+    boulders = session.scalars(
+        select(Boulder)
+        .join(Boulder.crag)
+        .join(Crag.area)
+        .where(Area.slug == area_slug)
+    ).all()
+    for boulder in boulders:
+        boulder.similarity_matrix_id = None
+        session.add(boulder)
     session.commit()
 
 
@@ -99,7 +113,7 @@ def save_similarity_matrix(
 
         indices = row.indices
         data = row.data
-        
+
         data[row_id == indices] = -1  # Exclude self-similarity
 
         top_indices = np.argsort(-data)[:top_N]

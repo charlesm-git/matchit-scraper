@@ -30,7 +30,7 @@ def similarity_algorithm(area_config: dict):
     them as .npz"""
 
     print(
-        f"Starting similarity algorithm for area: {area_config["area_name"]}"
+        f"\nStarting similarity algorithm for area: {area_config["area_name"]}"
     )
 
     with Session() as session:
@@ -70,8 +70,7 @@ def similarity_algorithm(area_config: dict):
         # Matrix saving
         print("\nStep 5: Matrix aggregation...")
         similarity_matrix = (
-            SIMILARITY_GRADE_WEIGHT * similarity_grades_matrix
-            + SIMILARITY_ASCENT_WEIGHT * similarity_ascents_matrix
+            SIMILARITY_ASCENT_WEIGHT * similarity_ascents_matrix
         )
         print("Step 5 completed.")
 
@@ -109,8 +108,8 @@ if __name__ == "__main__":
         areas = get_all_areas_to_process()
         for area_config in areas:
             user_input = input(
-                f"Similarity algorithm is running for {area_config['area_name']}\n"
-                f"All current similarity data will be overwritten. Proceed? (yes/no): "
+                f"\nSimilarity algorithm is running for {area_config['area_name']}"
+                f"\nAll current similarity data will be overwritten. Proceed? (yes/no): "
             )
 
             if user_input.lower() == "yes":
@@ -127,11 +126,10 @@ if __name__ == "__main__":
             sys.exit(0)
 
         user_input = input(
-            f"Similarity algorithm is running for {args.area}\n"
-            f"All current similarity data will be overwritten. Proceed? (yes/no): "
+            f"\nSimilarity algorithm is running for {args.area}"
+            f"\nAll current similarity data will be overwritten. Proceed? (yes/no): "
         )
 
         if user_input.lower() == "yes":
             area_config = get_area_config(args.country, args.area)
-            print(area_config)
             similarity_algorithm(area_config=area_config)
