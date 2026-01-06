@@ -67,7 +67,7 @@ db_path = "matchit.db"
 DATABASE_URL = f"sqlite:///{db_path}"
 engine = create_engine(DATABASE_URL, echo=False)
 
-session_factory = sessionmaker(bind=engine)
+session_factory = sessionmaker(bind=engine, expire_on_commit=False)
 
 Session = scoped_session(session_factory)
 

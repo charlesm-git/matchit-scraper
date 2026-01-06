@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy import text
 from database import engine
 
+
 def create_indexes(engine):
     with engine.connect() as conn:
         indexes = [
@@ -18,6 +19,9 @@ def create_indexes(engine):
             "CREATE INDEX IF NOT EXISTS ix_boulder_crag_id ON boulder (crag_id);",
             "CREATE INDEX IF NOT EXISTS ix_crag_area_id ON crag (area_id);",
             "CREATE INDEX IF NOT EXISTS ix_area_country_id ON area (country_id);",
+            # Similarity table indexes
+            "CREATE INDEX IF NOT EXISTS ix_similarity_id2 ON similarity (id2);",
+            "CREATE INDEX IF NOT EXISTS ix_similarity_id1_score ON similarity (id1, score DESC);",
         ]
 
         for index in indexes:

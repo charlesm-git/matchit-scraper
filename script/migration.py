@@ -8,14 +8,9 @@ DB_PATH = Path(__file__).parent.parent / "matchit.db"
 # SQL statements to execute
 # Update this section with your migration SQL
 SQL_STATEMENTS = """
--- Add indexes on foreign keys for performance
-CREATE INDEX IF NOT EXISTS ix_ascent_boulder_id ON ascent (boulder_id);
-CREATE INDEX IF NOT EXISTS ix_ascent_user_id ON ascent (user_id);
-CREATE INDEX IF NOT EXISTS ix_ascent_log_grade_id ON ascent (log_grade_id);
-CREATE INDEX IF NOT EXISTS ix_boulder_grade_id ON boulder (grade_id);
-CREATE INDEX IF NOT EXISTS ix_boulder_crag_id ON boulder (crag_id);
-CREATE INDEX IF NOT EXISTS ix_crag_area_id ON crag (area_id);
+ANALYZE;
 """
+
 
 def run_migration():
     """Execute SQL migration on the database."""

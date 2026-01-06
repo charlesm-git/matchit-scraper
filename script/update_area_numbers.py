@@ -14,7 +14,7 @@ from models.country import Country
 
 
 def update_area_counts(
-    country: str, area: str, boulders_count: int, ascents_count: int
+    country: str, area_config: dict, boulders_count: int, ascents_count: int
 ):
     """Update area counts for boulders and ascents."""
     with Session() as session:
@@ -22,13 +22,13 @@ def update_area_counts(
             select(Area)
             .join(Area.country)
             .where(
-                Area.name_normalized == area,
+                Area.slug == area_config["area_slug"],
                 Country.name_normalized == country,
             ),
         )
         
         if not area_obj:
-            print(f"Error: Area '{area}' not found in country '{country}'")
+            print(f"Error: Area '{area_config['area']}' not found in country '{country}'")
             return
 
         area_obj.boulders_count = boulders_count
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     ascent_count = input("Enter the number of ascents: ")
     update_area_counts(
         country=args.country,
-        area=args.area,
+        area_config=area_config,
         boulders_count=int(boulder_count),
         ascents_count=int(ascent_count),
     )

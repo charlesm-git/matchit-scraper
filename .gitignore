@@ -1,5 +1,6 @@
 .venv/
 __pycache__/
 *.npz
-*.db
+backup_database/
 legend.md
+*.db

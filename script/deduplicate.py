@@ -27,6 +27,16 @@ Arguments:
         Apply changes (auto mode only, interactive always prompts)
         Default: dry-run
 
+    --algorithm {ratio,token_sort}
+        Similarity algorithm to use
+        ratio: strict character-by-character comparison
+        token_sort: word order independent comparison
+        Default: ratio
+
+    --ignore-crag
+        Compare boulders across all crags instead of only within same crag
+        Default: only compare within same crag
+
 Examples:
     python deduplicate_boulders.py --mode interactive --area ticino
     python deduplicate_boulders.py --mode auto --similarity 95 --execute
@@ -35,6 +45,7 @@ Examples:
 import re
 import sys
 from pathlib import Path
+
 # Add parent directory to path to import project modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -49,6 +60,7 @@ from database import Session
 from models.boulder import Boulder
 from models.crag import Crag
 from models.grade import Grade
+from config import VALID_COUNTRY_AREAS
 
 
 # Variation keywords that indicate different versions of the same problem
@@ -217,7 +229,8 @@ def find_duplicate_groups(
                         continue
 
                     grade_diff = abs(
-                        boulder1.grade.correspondence - boulder2.grade.correspondence
+                        boulder1.grade.correspondence
+                        - boulder2.grade.correspondence
                     )
                     if grade_diff > grade_tolerance:
                         if (
@@ -258,7 +271,8 @@ def find_duplicate_groups(
 
                 # Check if grades are close enough
                 grade_diff = abs(
-                    boulder1.grade.correspondence - boulder2.grade.correspondence
+                    boulder1.grade.correspondence
+                    - boulder2.grade.correspondence
                 )
                 if grade_diff > grade_tolerance:
                     # Since sorted, no point checking further
@@ -472,12 +486,29 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    
+    countries = VALID_COUNTRY_AREAS.keys()
+    area_slug = None
+    if args.area:
+        # Validate area
+        area_found = False
+        for country in countries:
+            for area in VALID_COUNTRY_AREAS[country]:
+                if area["area"] == args.area:
+                    area_found = True
+                    area_slug = area["area_slug"]
+                    break
+            if area_found:
+                break
+        if not area_found:
+            print(f"Error: Area slug '{args.area}' is not valid.")
+            sys.exit(1)
 
     if args.mode == "interactive":
         interactive_merge(
             min_similarity=args.similarity,
             grade_tolerance=args.grade_tolerance,
-            area_slug=args.area,
+            area_slug=area_slug,
             algorithm=args.algorithm,
             group_by_crag=not args.ignore_crag,
         )
@@ -487,7 +518,7 @@ if __name__ == "__main__":
         auto_merge(
             min_similarity=similarity,
             grade_tolerance=args.grade_tolerance,
-            area_slug=args.area,
+            area_slug=area_slug,
             dry_run=not args.execute,
             algorithm=args.algorithm,
             group_by_crag=not args.ignore_crag,

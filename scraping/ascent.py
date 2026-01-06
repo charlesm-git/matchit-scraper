@@ -14,7 +14,7 @@ from models.grade import Grade
 from models.user import User
 from scraping import helper
 from scraping.fetch import fetch
-from scraping.query import (
+from scraping.crud import (
     fetch_all_boulders,
     fetch_all_boulders_in_area,
     fetch_unscraped_boulders,
@@ -198,7 +198,7 @@ def scrape_ascents_from_boulder(
         for item in items:
 
             # Skip private users
-            if item.get("userPrivate"):
+            if item.get("userPrivate") or item.get("userName") is None:
                 continue
 
             # Get or create user

@@ -16,6 +16,7 @@ from models.base import Base
 import models.grade
 import models.ascent
 import models.crag
+import models.similarity
 
 
 class Boulder(Base):
@@ -52,7 +53,7 @@ class Boulder(Base):
         String, nullable=True
     )
     ascent_retry_count: Mapped[int] = mapped_column(Integer, default=0)
-    
+
     # Similarity matrix ID (for future use)
     similarity_matrix_id: Mapped[Optional[int]] = mapped_column(
         Integer, nullable=True
@@ -73,6 +74,18 @@ class Boulder(Base):
     # Association object for ascents
     ascents: Mapped[List["models.ascent.Ascent"]] = relationship(
         "Ascent", back_populates="boulder"
+    )
+
+    # Similarity relationships
+    similarities_as_id1: Mapped[List["models.similarity.Similarity"]] = (
+        relationship(
+            "Similarity", foreign_keys="[Similarity.id1]", viewonly=True
+        )
+    )
+    similarities_as_id2: Mapped[List["models.similarity.Similarity"]] = (
+        relationship(
+            "Similarity", foreign_keys="[Similarity.id2]", viewonly=True
+        )
     )
 
     def __repr__(self):

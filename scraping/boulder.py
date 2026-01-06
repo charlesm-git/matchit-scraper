@@ -19,7 +19,7 @@ from models.grade import Grade
 from scraping.fetch import fetch
 from scraping.helper import signal_handler, text_normalizer
 from scraping import helper
-from scraping.query import fetch_all_boulders_in_area
+from scraping.crud import fetch_all_boulders_in_area
 
 
 def scrape_area(

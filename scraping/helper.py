@@ -32,11 +32,13 @@ def text_normalizer(text: str):
 
     return text
 
+
 def check_country_validity(country_slug: str) -> bool:
     """Check if the given country and area slugs are valid."""
     if country_slug not in VALID_COUNTRY_AREAS:
         return False
     return True
+
 
 def check_area_validity(country_slug: str, area_slug: str) -> bool:
     """Check if the given area slug is valid for the specified country."""
@@ -45,9 +47,19 @@ def check_area_validity(country_slug: str, area_slug: str) -> bool:
     ]
     return area_slug in valid_areas
 
-def retrieve_area_config(country_slug: str, area_slug: str) -> dict:
+
+def get_area_config(country_slug: str, area_slug: str) -> dict:
     """Retrieve the configuration dictionary for the specified country and area slugs."""
     for config in VALID_COUNTRY_AREAS[country_slug]:
         if config["area"] == area_slug:
             return config
     return {}
+
+
+def get_all_areas_to_process() -> list[dict]:
+    """Retrieve all area configurations to process."""
+    areas = []
+    for country_configs in VALID_COUNTRY_AREAS.values():
+        for config in country_configs:
+            areas.append(config)
+    return areas

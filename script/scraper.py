@@ -1,3 +1,59 @@
+"""
+Script to scrape boulder and ascent data from climbing websites.
+Manages database initialization and scraping workflows for specific areas or entire datasets.
+
+Usage:
+    python scraper.py [options]
+
+Arguments:
+    -c, --country SLUG
+        Country slug identifier (e.g., 'switzerland', 'south-africa')
+        Required when scraping boulders or specific areas
+
+    -a, --area SLUG
+        Area slug identifier (e.g., 'ticino', 'rocklands')
+        Required when scraping boulders or specific areas
+
+    --reset
+        Reset and reinitialize the entire database before scraping
+        Requires confirmation prompt
+        Warning: Deletes all existing data
+
+    -sb, --scrape-boulders
+        Scrape boulder data (names, grades, locations, etc.)
+        Requires --country and --area to be specified
+
+    -sa, --scrape-ascents
+        Scrape ascent data (user climbing logs)
+        If --country and --area not specified, scrapes ascents for all boulders
+
+    --delete-and-rescrape-entire-area
+        Delete all boulders and ascents in the specified area before rescraping
+        Use with --scrape-boulders to force complete refresh
+        Requires --country and --area
+
+    --delete-and-rescrape-all-ascents
+        Delete all ascents in the specified area before rescraping
+        Use with --scrape-ascents to force complete refresh of ascent data
+        If --country and --area not specified, affects all areas
+
+Examples:
+    # Scrape boulders for a specific area
+    python scraper.py -c switzerland -a ticino --scrape-boulders
+
+    # Scrape ascents for a specific area
+    python scraper.py -c switzerland -a ticino --scrape-ascents
+
+    # Scrape ascents for all areas
+    python scraper.py --scrape-ascents
+
+    # Force rescrape entire area (boulders and ascents)
+    python scraper.py -c switzerland -a ticino --scrape-boulders --delete-and-rescrape-entire-area
+
+    # Reset database and scrape fresh data
+    python scraper.py --reset -c switzerland -a ticino --scrape-boulders --scrape-ascents
+"""
+
 import sys
 from pathlib import Path
 
@@ -12,7 +68,7 @@ from scraping.boulder import scrape_area
 from scraping.helper import (
     check_area_validity,
     check_country_validity,
-    retrieve_area_config,
+    get_area_config,
 )
 
 
@@ -80,7 +136,7 @@ if __name__ == "__main__":
             sys.exit(0)
 
         # Retrieve area configuration
-        area_config = retrieve_area_config(args.country, args.area)
+        area_config = get_area_config(args.country, args.area)
 
         # Determine if force rescrape is needed
         force_rescrape = args.delete_and_rescrape_entire_area
@@ -95,16 +151,17 @@ if __name__ == "__main__":
                 "\nNo country or area specified, scraping ascents for all areas."
             )
             scrape_ascents_for_boulders(force_rescrape=force_rescrape)
+            sys.exit(0)
 
-        if not check_country_validity(args.country):
+        elif not check_country_validity(args.country):
             print(f"\nInvalid country slug: {args.country}")
             sys.exit(0)
 
-        if not check_area_validity(args.country, args.area):
+        elif not check_area_validity(args.country, args.area):
             print(
                 f"\nInvalid area slug: {args.area} for country: {args.country}"
             )
             sys.exit(0)
 
-        area_config = retrieve_area_config(args.country, args.area)
+        area_config = get_area_config(args.country, args.area)
         scrape_ascents_for_boulders(area_config, force_rescrape=force_rescrape)

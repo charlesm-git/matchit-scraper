@@ -2,16 +2,14 @@ import pandas as pd
 import numpy as np
 from scipy.sparse import coo_matrix
 
-
-from sqlalchemy import select
 from database import Session
-from models.ascent import Ascent
+from ml.crud import get_ascents_for_similarity
 
 
-def similarity_ascents():
+def similarity_ascents(area_slug: str) -> coo_matrix:
     # DB query
     with Session() as db:
-        ascents = db.execute(select(Ascent.user_id, Ascent.boulder_id)).all()
+        ascents = get_ascents_for_similarity(session=db, area_slug=area_slug)
         ascents_df = pd.DataFrame(data=ascents, columns=["user_id", "id"])
 
     boulder_user_matrix = ascents_df.pivot_table(
