@@ -60,8 +60,8 @@ class Boulder(Base):
     )
 
     # Foreign Keys
-    grade_id: Mapped[int] = mapped_column(ForeignKey("grade.id"))
-    crag_id: Mapped[int] = mapped_column(ForeignKey("crag.id"))
+    grade_id: Mapped[int] = mapped_column(ForeignKey("grade.id"), index=True)
+    crag_id: Mapped[int] = mapped_column(ForeignKey("crag.id"), index=True)
 
     # Relationship to other entities via Foreign Keys
     grade: Mapped["models.grade.Grade"] = relationship(

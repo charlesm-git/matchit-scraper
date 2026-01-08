@@ -1,15 +1,12 @@
-from os import name
 import random
 import signal
 import sys
 from time import sleep
-from numpy import single
 from sqlalchemy.orm import scoped_session
 from sqlalchemy import select
 import requests
 
-from database import GRADES_TO_SCRAPE, Session
-from models import base
+from database import Session
 from models.area import Area
 from models.ascent import Ascent
 from models.boulder import Boulder
@@ -19,13 +16,14 @@ from models.grade import Grade
 from scraping.fetch import fetch
 from scraping.helper import signal_handler, text_normalizer
 from scraping import helper
-from scraping.crud import fetch_all_boulders_in_area
 
 
 def scrape_area(
     country_normalized_name: str,
     area_config: dict,
-    force_rescrape: bool = False,
+    force_rescrape: bool,
+    boulders_count: int,
+    ascents_count: int,
 ):
     """Scrape all boulders for a given area by scraping each crag"""
     signal.signal(signal.SIGINT, signal_handler)
@@ -48,18 +46,28 @@ def scrape_area(
         if not area:
             # Construct area URL
             if area_config["is_crag_in_db"]:
-                url = f"https://www.8a.nu/crags/bouldering/{country.slug}/{area_config['area_slug']}"
+                url = f"https://www.8a.nu/crags/bouldering/{country.slug}/{area_config["area_external_slug"]}"
             else:
-                url = f"https://www.8a.nu/areas/{country.slug}/{area_config['area_slug']}/"
+                url = f"https://www.8a.nu/areas/{country.slug}/{area_config["area_external_slug"]}/"
 
             area = Area.create(
                 db,
                 name=area_config["area_name"],
                 name_normalized=text_normalizer(area_config["area_name"]),
                 slug=area_config["area_slug"],
+                external_slug=area_config.get("area_external_slug"),
                 country_id=country.id,
                 url=url,
+                boulders_count=boulders_count,
+                ascents_count=ascents_count,
             )
+        elif area and boulders_count is not None and ascents_count is not None:
+            # Update boulders and ascents count if area already exists
+            # and new counts are provided
+            area.boulders_count = boulders_count
+            area.ascents_count = ascents_count
+            db.add(area)
+            db.commit()
 
         # Check if area has already been fully scraped
         # If so, and force_rescrape is not set, skip scraping
@@ -176,7 +184,7 @@ def scrape_crag_path_area_double_layer(
     )
 
     # Scrape all boulders for this crag
-    
+
     # crag API url templates (use {page_index} placeholder for dynamic updates)
     base_url = (
         f"https://www.8a.nu/api/unification/outdoor/v1/web/zlaggables/bouldering/{country.slug}"
@@ -214,13 +222,13 @@ def scrape_path_area_single_layer(
 ):
     """Path 2: Area, single layer - area-level scraping linked to synthetic crag"""
     # Create or get synthetic crag for the area
-    crag = Crag.get_by_slug_and_area_id(db, slug=area.slug, area_id=area.id)
+    crag = Crag.get_by_slug_and_area_id(db, slug=area.external_slug, area_id=area.id)
     if not crag:
         crag = Crag.create(
             db,
             name=area.name,
             name_normalized=area.name_normalized,
-            slug=area.slug,
+            slug=area.external_slug,
             area_id=area.id,
             url=area.url,
             is_synthetic=True,
@@ -257,10 +265,10 @@ def scrape_crag_path_area_single_layer(
     base_url = (
         f"https://www.8a.nu/api/unification/outdoor/v1/web/zlaggables/1/{country.slug}"
         f"?pageIndex={{page_index}}&grade=16,36&sortField=name"
-        f"&order=asc&areaSlug={area.slug}"
+        f"&order=asc&areaSlug={area.external_slug}"
     )
     referer = (
-        f"https://www.8a.nu/areas/{country.slug}/{area.slug}/bouldering"
+        f"https://www.8a.nu/areas/{country.slug}/{area.external_slug}/bouldering"
         f"?grade=16,36&sortField=name&order=asc&page={{page_index}}"
     )
 
@@ -310,10 +318,10 @@ def scrape_crags_path_crag_as_area_double_layer(
     base_url = (
         f"https://www.8a.nu/api/unification/outdoor/v1/web/zlaggables/bouldering/{country.slug}"
         f"?sectorSlug&pageIndex={{page_index}}&sortField=name"
-        f"&grade=16,36&searchQuery&order=asc&cragSlug={area.slug}"
+        f"&grade=16,36&searchQuery&order=asc&cragSlug={area.external_slug}"
     )
     referer = (
-        f"https://www.8a.nu/crags/bouldering/{country.slug}/{area.slug}/routes"
+        f"https://www.8a.nu/crags/bouldering/{country.slug}/{area.external_slug}/routes"
         f"?grade=16,36&sortField=name&order=asc&page={{page_index}}"
     )
 
@@ -345,13 +353,13 @@ def scrape_path_crag_as_area_single_layer(
 ):
     """Path 4: Crag as area, single layer - area duplicated as synthetic crag"""
     # Create or get synthetic crag that duplicates the area
-    crag = Crag.get_by_slug_and_area_id(db, slug=area.slug, area_id=area.id)
+    crag = Crag.get_by_slug_and_area_id(db, slug=area.external_slug, area_id=area.id)
     if not crag:
         crag = Crag.create(
             db,
             name=area.name,
             name_normalized=area.name_normalized,
-            slug=area.slug,
+            slug=area.external_slug,
             area_id=area.id,
             url=area.url,
             is_synthetic=True,
@@ -387,10 +395,10 @@ def scrape_crags_path_crag_as_area_single_layer(
     base_url = (
         f"https://www.8a.nu/api/unification/outdoor/v1/web/zlaggables/bouldering/{country.slug}"
         f"?sectorSlug&pageIndex={{page_index}}&sortField=name"
-        f"&grade=16,36&searchQuery&order=asc&cragSlug={area.slug}"
+        f"&grade=16,36&searchQuery&order=asc&cragSlug={area.external_slug}"
     )
     referer = (
-        f"https://www.8a.nu/crags/bouldering/{country.slug}/{area.slug}/routes"
+        f"https://www.8a.nu/crags/bouldering/{country.slug}/{area.external_slug}/routes"
         f"?grade=16,36&sortField=name&order=asc&page={{page_index}}"
     )
 
@@ -429,9 +437,9 @@ def discover_crags_from_api(
         base_url = (
             f"https://www.8a.nu/api/unification/outdoor/v1/web/crags?"
             f"pageIndex={page_index}&sortField=totalascents&category=69"
-            f"&order=desc&countrySlug={country_slug}&areaSlug={area.slug}"
+            f"&order=desc&countrySlug={country_slug}&areaSlug={area.external_slug}"
         )
-        referer = f"https://www.8a.nu/areas/{country_slug}/{area.slug}/crags?page={page_index + 1}"
+        referer = f"https://www.8a.nu/areas/{country_slug}/{area.external_slug}/crags?page={page_index + 1}"
         response = fetch(url=base_url, referer=referer)
         items = response.get("items", [])
         pagination = response.get("pagination", {})
@@ -478,9 +486,9 @@ def get_orphaned_crags(
                 db,
                 name=added_crag_config["name"],
                 name_normalized=text_normalizer(added_crag_config["name"]),
-                slug=added_crag_config["slug"],
+                slug=added_crag_config["external_slug"],
                 area_id=area.id,
-                url=f"https://www.8a.nu/crags/bouldering/{country_slug}/{added_crag_config['slug']}/routes",
+                url=f"https://www.8a.nu/crags/bouldering/{country_slug}/{added_crag_config['external_slug']}/routes",
             )
         crags.append(crag_obj)
     return crags
@@ -535,16 +543,14 @@ def scrape_boulders_by_location(
     max_retries = 3
 
     while True:
-        print(
-            f"Current page - {page_index}"
-        )
+        print(f"Current page - {page_index}")
         # Random sleep to avoid rate limiting
         sleep(random.uniform(1, 5))
 
         # Format URLs with current page_index
         current_api_url = api_url.format(page_index=page_index)
         current_referer = referer.format(page_index=page_index + 1)
-        
+
         try:
             response = fetch(url=current_api_url, referer=current_referer)
             retry_count = 0
@@ -552,7 +558,9 @@ def scrape_boulders_by_location(
             print(f"Timeout fetching page {page_index}: {e}")
             retry_count += 1
             if retry_count >= max_retries:
-                error_msg = f"Timeout after {max_retries} retries on page {page_index}"
+                error_msg = (
+                    f"Timeout after {max_retries} retries on page {page_index}"
+                )
                 print(f"ERROR: {error_msg}")
                 if crag:
                     crag.boulder_scrape_error = error_msg
@@ -571,9 +579,7 @@ def scrape_boulders_by_location(
             continue
         except requests.exceptions.HTTPError as e:
             status_code = e.response.status_code if e.response else None
-            print(
-                f"HTTP {status_code} error on page {page_index}: {e}"
-            )
+            print(f"HTTP {status_code} error on page {page_index}: {e}")
             retry_count += 1
             if retry_count >= max_retries:
                 error_msg = f"HTTP {status_code} after {max_retries} retries on page {page_index}"
@@ -594,9 +600,7 @@ def scrape_boulders_by_location(
             sleep(wait_time)
             continue
         except requests.exceptions.RequestException as e:
-            print(
-                f"Request error on page {page_index}: {e}"
-            )
+            print(f"Request error on page {page_index}: {e}")
             retry_count += 1
             if retry_count >= max_retries:
                 error_msg = f"Request failed after {max_retries} retries on page {page_index}"
@@ -630,7 +634,9 @@ def scrape_boulders_by_location(
 
         if pagination.get("hasNext"):
             page_index += 1
-            print(f"\n{pagination.get('pageCount') - page_index} pages remaining.")
+            print(
+                f"\n{pagination.get('pageCount') - page_index} pages remaining."
+            )
             if crag:
                 crag.update_scraping_resume_page(db, page_index)
             else:
@@ -667,10 +673,8 @@ def extract_boulders_info(
     """Extract relevant boulder information from API response items"""
     for item in items:
         grade_value = item.get("difficulty")
-        grade = Grade.get_by_value(
-            db, grade_value
-        )
-        
+        grade = Grade.get_by_value(db, grade_value)
+
         boulder_name = item.get("zlaggableName")
 
         # Skip boulders with name "N.N." or similar
@@ -697,7 +701,7 @@ def extract_boulders_info(
 
         boulder.sector_name = item.get("sectorName")
         boulder.sector_slug = item.get("sectorSlug")
-        
+
         boulder.crag_slug = item.get("cragSlug")
         boulder.crag_name = item.get("cragName")
 

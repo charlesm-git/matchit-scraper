@@ -27,7 +27,8 @@ class Area(Base):
     )
     name: Mapped[str] = mapped_column(String)
     name_normalized: Mapped[str] = mapped_column(String)
-    slug: Mapped[str] = mapped_column(String)
+    slug: Mapped[str] = mapped_column(String, unique=True)
+    external_slug: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     external_db_id: Mapped[Optional[int]] = mapped_column(
         Integer, nullable=True
@@ -41,7 +42,7 @@ class Area(Base):
 
     # Foreign Key
     country_id: Mapped[int] = mapped_column(
-        ForeignKey("country.id", ondelete="RESTRICT", onupdate="CASCADE")
+        ForeignKey("country.id", ondelete="RESTRICT", onupdate="CASCADE"), index=True
     )
 
     # Track if the area is fully scraped (all its crags' boulders)
@@ -84,7 +85,8 @@ class Area(Base):
     def mark_as_scraped(self, db_session):
         """Mark the Area as having all boulders scraped."""
         self.scraped = True
-        self.scraping_resume_crag_slug = None
+        self.scraped_crags = True
+        self.scraping_resume_page = None
         db_session.add(self)
         db_session.commit()
         db_session.refresh(self)

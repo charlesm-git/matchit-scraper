@@ -43,7 +43,7 @@ def scrape_ascents_for_boulders(
                 boulders = fetch_all_boulders(db)
             else:
                 boulders = fetch_all_boulders_in_area(
-                    db, area_config["area_slug"]
+                    db, area_config["area_external_slug"]
                 )
 
             # Delete all ascents for these boulders
@@ -68,7 +68,7 @@ def scrape_ascents_for_boulders(
             unscraped_boulders = fetch_unscraped_boulders(db)
         else:
             unscraped_boulders = fetch_unscraped_boulders_in_area(
-                db, area_config["area_slug"]
+                db, area_config["area_external_slug"]
             )
 
         print(
@@ -91,9 +91,7 @@ def scrape_ascents_for_boulders(
             scrape_ascents_from_boulder(db, boulder)
 
 
-def scrape_ascents_from_boulder(
-    db: scoped_session, boulder: Boulder
-):
+def scrape_ascents_from_boulder(db: scoped_session, boulder: Boulder):
     """Scrape ascents for a given boulder URL and store them in the database."""
     retry_count = 0
     max_retries = 3
@@ -197,8 +195,12 @@ def scrape_ascents_from_boulder(
         # Process ascents here (implement your ascent parsing logic)
         for item in items:
 
-            # Skip private users
-            if item.get("userPrivate") or item.get("userName") is None:
+            # Skip private users and "go" type ascents
+            if (
+                item.get("userPrivate")
+                or item.get("userName") is None
+                or item.get("type") is "go"
+            ):
                 continue
 
             # Get or create user
@@ -234,7 +236,7 @@ def scrape_ascents_from_boulder(
             ).date()
             ascent.comment = item.get("comment")
 
-            ascent_type = item.get("ascentType")
+            ascent_type = item.get("type")
             match ascent_type:
                 case "f":
                     ascent.type = "flash"
@@ -242,8 +244,6 @@ def scrape_ascents_from_boulder(
                     ascent.type = "onsight"
                 case "rp":
                     ascent.type = "redpoint"
-                case "go":
-                    ascent.type = "go"
                 case _:
                     ascent.type = None
 

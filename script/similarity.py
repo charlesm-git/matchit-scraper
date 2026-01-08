@@ -50,7 +50,7 @@ def similarity_algorithm(area_config: dict):
         # Similarity matrix computation. All in COO format
         print("Ascent similarity calculation")
         similarity_ascents_matrix = similarity_ascents(
-            area_slug=area_config["area_slug"]
+            area_slug=area_config["area_external_slug"]
         )
         print("Grade similarity calculation")
         similarity_grades_matrix = similarity_grade(boulders=boulders)
@@ -78,7 +78,7 @@ def similarity_algorithm(area_config: dict):
         save_similarity_matrix(
             session=session,
             similarity_matrix=similarity_matrix,
-            area_slug=area_config["area_slug"],
+            area_slug=area_config["area_external_slug"],
             top_N=150,
         )
         print("Step 6 completed.")

@@ -25,7 +25,7 @@ class Crag(Base):
 
     # Foreign Key
     area_id: Mapped[int] = mapped_column(
-        ForeignKey("area.id", ondelete="RESTRICT", onupdate="CASCADE")
+        ForeignKey("area.id", ondelete="RESTRICT", onupdate="CASCADE"), index=True
     )
 
     # Scraping status (for crags with their own pagination)

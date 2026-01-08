@@ -100,6 +100,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Delete all ascents in the area and rescrape from scratch",
     )
+    parser.add_argument(
+        "--ignore-count-update",
+        action="store_true",
+        help="Skip the update of boulders and ascent numbers",
+    )
 
     args = parser.parse_args()
 
@@ -138,9 +143,22 @@ if __name__ == "__main__":
         # Retrieve area configuration
         area_config = get_area_config(args.country, args.area)
 
+        boulders_count = None
+        ascents_count = None
+        if not args.ignore_count_update:
+            # Prompt for boulder and ascent counts
+            boulders_count = input("Enter the number of boulders: ")
+            ascents_count = input("Enter the number of ascents: ")
+
         # Determine if force rescrape is needed
         force_rescrape = args.delete_and_rescrape_entire_area
-        scrape_area(args.country, area_config, force_rescrape=force_rescrape)
+        scrape_area(
+            country_normalized_name=args.country,
+            area_config=area_config,
+            boulders_count=boulders_count,
+            ascents_count=ascents_count,
+            force_rescrape=force_rescrape,
+        )
 
     # Scrape ascents if requested
     if args.scrape_ascents:

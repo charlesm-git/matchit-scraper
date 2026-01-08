@@ -19,8 +19,8 @@ REMOTE_NAME = "origin"
 VALID_COUNTRY_AREAS = {
     "austria": [
         {
-            "area": "silvretta",
             "area_slug": "silvretta",
+            "area_external_slug": "silvretta",
             "area_name": "Silvretta",
             "is_crag_in_db": True,
             "single_layer_division": False,
@@ -28,8 +28,8 @@ VALID_COUNTRY_AREAS = {
     ],
     "france": [
         {
-            "area": "fontainebleau",
             "area_slug": "fontainebleau",
+            "area_external_slug": "fontainebleau",
             "area_name": "Fontainebleau",
             "is_crag_in_db": False,
             "single_layer_division": False,
@@ -37,15 +37,15 @@ VALID_COUNTRY_AREAS = {
     ],
     "italy": [
         {
-            "area": "val-daone",
             "area_slug": "val-daone",
+            "area_external_slug": "val-daone",
             "area_name": "Val Daone",
             "is_crag_in_db": False,
             "single_layer_division": True,
         },
         {
-            "area": "val-di-mello",
             "area_slug": "val-di-mello",
+            "area_external_slug": "val-di-mello",
             "area_name": "Val di Mello",
             "is_crag_in_db": False,
             "single_layer_division": True,
@@ -53,8 +53,8 @@ VALID_COUNTRY_AREAS = {
     ],
     "spain": [
         {
-            "area": "albarracin",
-            "area_slug": "unknown-crag",
+            "area_slug": "albarracin",
+            "area_external_slug": "unknown-crag",
             "area_name": "Albarracín",
             "is_crag_in_db": True,
             "single_layer_division": False,
@@ -62,8 +62,8 @@ VALID_COUNTRY_AREAS = {
     ],
     "sweden": [
         {
-            "area": "vastervik",
-            "area_slug": "vaestervik",
+            "area_slug": "vastervik",
+            "area_external_slug": "vaestervik",
             "area_name": "Västervik",
             "is_crag_in_db": True,
             "single_layer_division": False,
@@ -71,22 +71,22 @@ VALID_COUNTRY_AREAS = {
     ],
     "switzerland": [
         {
-            "area": "bas-valais",
             "area_slug": "bas-valais",
+            "area_external_slug": "bas-valais",
             "area_name": "Bas-Valais",
             "is_crag_in_db": False,
             "single_layer_division": False,
         },
         {
-            "area": "magic-wood",
             "area_slug": "magic-wood",
+            "area_external_slug": "magic-wood",
             "area_name": "Magic Wood",
             "is_crag_in_db": True,
             "single_layer_division": True,
         },
         {
-            "area": "ticino",
             "area_slug": "ticino",
+            "area_external_slug": "ticino",
             "area_name": "Ticino",
             "is_crag_in_db": False,
             "single_layer_division": False,
@@ -94,26 +94,30 @@ VALID_COUNTRY_AREAS = {
                 {
                     "name": "Bodio",
                     "slug": "bodio",
+                    "external_slug": "bodio",
                 },
                 {
                     "name": "Osogna",
                     "slug": "osogna",
+                    "external_slug": "osogna",
                 },
                 {
                     "name": "Val Calanca",
                     "slug": "val-calanca",
+                    "external_slug": "val-calanca",
                 },
                 {
                     "name": "Sobrio",
                     "slug": "sobrio",
+                    "external_slug": "sobrio",
                 }
             ],
         },
     ],
     "south africa": [
         {
-            "area": "rocklands",
             "area_slug": "rocklands",
+            "area_external_slug": "rocklands",
             "area_name": "Rocklands",
             "is_crag_in_db": False,
             "single_layer_division": False,

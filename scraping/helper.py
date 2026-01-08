@@ -43,7 +43,7 @@ def check_country_validity(country_slug: str) -> bool:
 def check_area_validity(country_slug: str, area_slug: str) -> bool:
     """Check if the given area slug is valid for the specified country."""
     valid_areas = [
-        config["area"] for config in VALID_COUNTRY_AREAS[country_slug]
+        config["area_slug"] for config in VALID_COUNTRY_AREAS[country_slug]
     ]
     return area_slug in valid_areas
 
@@ -51,7 +51,7 @@ def check_area_validity(country_slug: str, area_slug: str) -> bool:
 def get_area_config(country_slug: str, area_slug: str) -> dict:
     """Retrieve the configuration dictionary for the specified country and area slugs."""
     for config in VALID_COUNTRY_AREAS[country_slug]:
-        if config["area"] == area_slug:
+        if config["area_slug"] == area_slug:
             return config
     return {}
 

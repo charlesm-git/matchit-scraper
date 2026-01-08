@@ -1,7 +1,7 @@
 import random
 import requests
 import uuid
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any
 
 # Each tuple: (user_agent, sec_ch_ua, mobile, platform)
 HEADER_PROFILES = [

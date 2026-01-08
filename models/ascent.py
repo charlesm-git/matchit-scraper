@@ -24,7 +24,7 @@ class Ascent(Base):
     log_date: Mapped[date] = mapped_column(Date)
     comment: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     type: Mapped[Optional[str]] = mapped_column(
-        Enum("flash", "onsight", "redpoint", "go", name="ascent_type"),
+        Enum("flash", "onsight", "redpoint", name="ascent_type"),
         nullable=True,
     )
     rating: Mapped[int] = mapped_column(Integer, default=0)
@@ -49,8 +49,8 @@ class Ascent(Base):
     recommended: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Foreign Keys
-    boulder_id: Mapped[int] = mapped_column(ForeignKey("boulder.id"))
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    boulder_id: Mapped[int] = mapped_column(ForeignKey("boulder.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), index=True)
     log_grade_id: Mapped[int] = mapped_column(ForeignKey("grade.id"))
 
     # Relationship
