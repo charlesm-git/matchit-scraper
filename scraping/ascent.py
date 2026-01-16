@@ -52,7 +52,7 @@ def scrape_ascents_for_boulders(
                     Ascent.boulder_id == boulder.id
                 ).delete(synchronize_session=False)
                 # Mark boulder as not scraped
-                boulder.scraped_ascents = False
+                boulder.scraped_ascents_at = None
                 db.add(boulder)
             db.commit()
             print(
@@ -199,7 +199,7 @@ def scrape_ascents_from_boulder(db: scoped_session, boulder: Boulder):
             if (
                 item.get("userPrivate")
                 or item.get("userName") is None
-                or item.get("type") is "go"
+                or item.get("type") == "go"
             ):
                 continue
 

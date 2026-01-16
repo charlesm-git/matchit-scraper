@@ -1,9 +1,12 @@
+from datetime import datetime
+from multiprocessing import synchronize
 import random
 import signal
 import sys
 from time import sleep
+from typing import List
 from sqlalchemy.orm import scoped_session
-from sqlalchemy import select
+from sqlalchemy import delete, select
 import requests
 
 from database import Session
@@ -61,7 +64,7 @@ def scrape_area(
                 boulders_count=boulders_count,
                 ascents_count=ascents_count,
             )
-        elif area and boulders_count is not None and ascents_count is not None:
+        elif area and boulders_count != "" and ascents_count != "":
             # Update boulders and ascents count if area already exists
             # and new counts are provided
             area.boulders_count = boulders_count
@@ -72,7 +75,7 @@ def scrape_area(
         # Check if area has already been fully scraped
         # If so, and force_rescrape is not set, skip scraping
         # If force_rescrape is set, delete existing boulders and ascents first, then rescrape
-        if area.scraped:
+        if area.scraped_at is not None:
             if force_rescrape:
                 print(
                     f"\nForce rescrape enabled. Deleting all boulders and ascents "
@@ -82,17 +85,24 @@ def scrape_area(
                 sleep(10)  # Pause to allow user to cancel if needed
 
                 # Delete all boulders and ascents in the area
-                reset_area(db, area)
+                reinitialize_area(db, area, full_reset=True)
                 print("Deletion complete. Starting rescrape...\n")
             else:
                 print(
                     f"\nArea '{area.name}' in country '{country.name}' has already been fully scraped."
                 )
-                print(
-                    "Use --delete-and-rescrape-entire-area to scrape again.\n"
-                    "This will delete all boulders and ascents and rescrape from scratch.\n"
+                update = input(
+                    "Do you want to update this area? Boulders will be updated with new infos (y/n): "
                 )
-                return
+                if update.lower() != "y":
+                    print(
+                        "\nUse --delete-and-rescrape-entire-area to scrape the area completely again.\n"
+                        "This will delete all boulders and ascents and rescrape from scratch.\n"
+                    )
+                    return
+                else:
+                    reinitialize_area(db, area, full_reset=False)
+                    print("Area reinitialized. Starting update...\n")
 
         # Determine scraping path based on area configuration
         is_crag_in_db = area_config.get("is_crag_in_db", False)
@@ -117,6 +127,9 @@ def scrape_area(
         # Mark area as fully scraped
         area.mark_as_scraped(db)
 
+        # Cleanup stale data (crags and boulders no longer in API)
+        cleanup_stale_data(db, area)
+
     print("\n" + "=" * 80)
     print("Area scraped successfully. All crags and boulders fetched.")
     print("=" * 80 + "\n")
@@ -130,7 +143,7 @@ def scrape_path_area_double_layer(
 ):
     """Path 1: Normal architecture - discover crags from API, scrape crag-by-crag"""
     # Discover all crags to scrape
-    if area.scraped_crags:
+    if area.scraped_crags_at is not None:
         crags_to_scrape = Crag.get_all_by_area_id(db, area.id)
     else:
         crags_from_main_area = discover_crags_from_api(db, country.slug, area)
@@ -139,7 +152,7 @@ def scrape_path_area_double_layer(
         )
         crags_to_scrape = crags_from_main_area + orphaned_crags
 
-        area.scraped_crags = True
+        area.scraped_crags_at = datetime.now()
         db.add(area)
         db.commit()
 
@@ -151,7 +164,7 @@ def scrape_path_area_double_layer(
         print(f"Scraping crag {i+1}/{len(crags_to_scrape)}: {crag.name}")
         print(f"{'='*80}\n")
 
-        if crag.scraped_boulders:
+        if crag.scraped_boulders_at is not None:
             print(f"Crag '{crag.name}' already scraped. Skipping.\n")
             continue
 
@@ -222,7 +235,9 @@ def scrape_path_area_single_layer(
 ):
     """Path 2: Area, single layer - area-level scraping linked to synthetic crag"""
     # Create or get synthetic crag for the area
-    crag = Crag.get_by_slug_and_area_id(db, slug=area.external_slug, area_id=area.id)
+    crag = Crag.get_by_slug_and_area_id(
+        db, slug=area.external_slug, area_id=area.id
+    )
     if not crag:
         crag = Crag.create(
             db,
@@ -233,13 +248,13 @@ def scrape_path_area_single_layer(
             url=area.url,
             is_synthetic=True,
         )
-        area.scraped_crags = True
+        area.scraped_crags_at = datetime.now()
         db.add(area)
         db.commit()
 
     print(f"\nScraping area '{area.name}' as single layer (synthetic crag)\n")
 
-    if not crag.scraped_boulders:
+    if crag.scraped_boulders_at is None:
         scrape_crag_path_area_single_layer(db, country, area, crag)
     else:
         print(f"Crag '{crag.name}' already scraped.\n")
@@ -353,7 +368,9 @@ def scrape_path_crag_as_area_single_layer(
 ):
     """Path 4: Crag as area, single layer - area duplicated as synthetic crag"""
     # Create or get synthetic crag that duplicates the area
-    crag = Crag.get_by_slug_and_area_id(db, slug=area.external_slug, area_id=area.id)
+    crag = Crag.get_by_slug_and_area_id(
+        db, slug=area.external_slug, area_id=area.id
+    )
     if not crag:
         crag = Crag.create(
             db,
@@ -364,13 +381,13 @@ def scrape_path_crag_as_area_single_layer(
             url=area.url,
             is_synthetic=True,
         )
-        area.scraped_crags = True
+        area.scraped_crags_at = datetime.now()
         db.add(area)
         db.commit()
 
     print(f"\nScraping synthetic crag: {crag.name}\n")
 
-    if not crag.scraped_boulders:
+    if crag.scraped_boulders_at is None:
         scrape_crags_path_crag_as_area_single_layer(db, country, area, crag)
     else:
         print(f"Crag '{crag.name}' already scraped.\n")
@@ -460,6 +477,8 @@ def discover_crags_from_api(
                     area_id=area.id,
                     url=f"https://www.8a.nu/crags/bouldering/{country_slug}/{item.get('cragSlug')}/routes",
                 )
+            crag.scraped_at = datetime.now()
+            db.add(crag)
             crags.append(crag)
 
         if not pagination.get("hasNext"):
@@ -490,43 +509,104 @@ def get_orphaned_crags(
                 area_id=area.id,
                 url=f"https://www.8a.nu/crags/bouldering/{country_slug}/{added_crag_config['external_slug']}/routes",
             )
+        crag_obj.scraped_at = datetime.now()
+        db.add(crag_obj)
         crags.append(crag_obj)
     return crags
 
 
-def reset_area(db: scoped_session, area: Area):
+def reinitialize_area(
+    db: scoped_session, area: Area, full_reset: bool = False
+):
     """Delete all boulders and ascents in the given area (all crags)"""
-    # Get all crags in the area
-    crags_in_area = db.scalars(
-        select(Crag).where(Crag.area_id == area.id)
-    ).all()
-
-    # Delete all boulders in each crag
-    for crag in crags_in_area:
-        delete_all_boulders_in_crag(db, crag)
-        db.delete(crag)
+    if full_reset:
+        delete_all_ascents_in_area(db, area)
+        delete_all_boulders_in_area(db, area)
+        delete_all_crags_in_area(db, area)
+    else:
+        update_boulders_and_crags_for_rescrape(db, area)
 
     # Reset area scraping status
-    area.scraped = False
-    area.scraped_crags = False
-    area.scraping_resume_crag_slug = None
+    area.scraped_at = None
+    area.scraped_crags_at = None
+    area.scraping_resume_page = None
     db.add(area)
 
     db.commit()
 
 
-def delete_all_boulders_in_crag(db: scoped_session, crag: Crag):
-    """Delete all boulders in the given crag"""
-    # Delete all ascents for boulders in the crag
-    boulders_in_crag = (
-        db.query(Boulder).filter(Boulder.crag_id == crag.id).all()
-    )
-    for boulder in boulders_in_crag:
-        db.query(Ascent).filter(Ascent.boulder_id == boulder.id).delete(
-            synchronize_session=False
-        )
-        db.delete(boulder)
+def delete_all_boulders_in_area(db: scoped_session, area: Area):
+    """Delete all boulders in the given area"""
+    crag_ids = select(Crag.id).where(Crag.area_id == area.id)
+    db.execute(delete(Boulder).where(Boulder.crag_id.in_(crag_ids)))
     db.commit()
+
+
+def delete_all_ascents_in_area(db: scoped_session, area: Area):
+    """Delete all ascents in the given area"""
+    boulder_ids = (
+        select(Boulder.id).join(Boulder.crag).where(Crag.area_id == area.id)
+    )
+    db.execute(delete(Ascent).where(Ascent.boulder_id.in_(boulder_ids)))
+    db.commit()
+
+
+def delete_all_crags_in_area(db: scoped_session, area: Area):
+    """Delete all crags in the given area"""
+    db.execute(delete(Crag).where(Crag.area_id == area.id))
+    db.commit()
+
+
+def update_boulders_and_crags_for_rescrape(db: scoped_session, area: Area):
+    """Mark all boulders in the area as not scraped for update"""
+    crags: List[Crag] = Crag.get_all_by_area_id(db, area.id)
+    for crag in crags:
+        crag.scraped_at = None
+        crag.scraped_boulders_at = None
+        crag.scraping_resume_page = None
+        db.add(crag)
+    db.commit()
+
+    boulders: List[Boulder] = (
+        db.execute(
+            select(Boulder).join(Boulder.crag).where(Crag.area_id == area.id)
+        )
+        .scalars()
+        .all()
+    )
+    for boulder in boulders:
+        boulder.scraped_at = None
+        boulder.scraped_ascents_at = None
+        db.add(boulder)
+    db.commit()
+
+
+def cleanup_stale_data(db: scoped_session, area: Area):
+    """Delete boulders and crags that were not found during the most recent scrape"""
+    # Delete stale boulders (not seen during this scrape)
+    boulder_ids = (
+        select(Boulder.id)
+        .join(Boulder.crag)
+        .where(Crag.area_id == area.id)
+        .where(Boulder.scraped_at.is_(None))
+    )
+    result = db.execute(delete(Boulder).where(Boulder.id.in_(boulder_ids)))
+    deleted_boulders = result.rowcount
+
+    # Delete stale crags (not seen during this scrape)
+    result = db.execute(
+        delete(Crag)
+        .where(Crag.area_id == area.id)
+        .where(Crag.scraped_at.is_(None))
+    )
+    deleted_crags = result.rowcount
+
+    db.commit()
+
+    if deleted_boulders > 0 or deleted_crags > 0:
+        print(
+            f"\nCleaned up stale data: {deleted_boulders} boulders, {deleted_crags} crags"
+        )
 
 
 def scrape_boulders_by_location(
@@ -679,15 +759,13 @@ def extract_boulders_info(
 
         # Skip boulders with name "N.N." or similar
         # Also skip boulders with zero ascents
-        if (
-            boulder_name == "N.N."
-            or boulder_name == "N.n."
-            or boulder_name == "n.n."
-            or item.get("totalAscents", 0) == 0
-        ):
+        if boulder_name.lower() == "n.n." or item.get("totalAscents", 0) == 0:
             continue
 
-        boulder = Boulder()
+        boulder = Boulder.get_by_slug(db, item.get("zlaggableSlug"))
+
+        if not boulder:
+            boulder = Boulder()
 
         boulder.external_db_id = item.get("zlaggableId")
 
@@ -706,6 +784,9 @@ def extract_boulders_info(
         boulder.crag_name = item.get("cragName")
 
         boulder.grade_id = grade.id
+
+        boulder.scraped_at = datetime.now()
+        boulder.scraped_ascents_at = None
 
         # Associate boulder with crag
         # If crag is provided, use it directly
@@ -730,6 +811,8 @@ def extract_boulders_info(
                         f"{area.slug}/sectors/{sector_slug}/routes"
                     ),
                 )
+            crag_obj.scraped_at = datetime.now()
+            db.add(crag_obj)
             boulder.crag_id = crag_obj.id
 
         boulder.url = (

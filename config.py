@@ -5,12 +5,6 @@ from pathlib import Path
 SCRAPER_DIR = Path(__file__).parent
 API_DIR = Path(__file__).parent.parent / "api"
 
-# Files
-DB_FILE = "bleau_info_stats.db"
-ASCENT_MATRIX_FILE = "similarity_ascent.npz"
-GRADE_MATRIX_FILE = "similarity_grade.npz"
-STYLE_MATRIX_FILE = "similarity_style.npz"
-
 
 # Git
 GIT_BRANCH = "main"
@@ -48,6 +42,13 @@ VALID_COUNTRY_AREAS = {
             "area_external_slug": "val-di-mello",
             "area_name": "Val di Mello",
             "is_crag_in_db": False,
+            "single_layer_division": True,
+        },
+        {
+            "area_slug": "varazze",
+            "area_external_slug": "varazze",
+            "area_name": "Varazze",
+            "is_crag_in_db": True,
             "single_layer_division": True,
         },
     ],
@@ -110,7 +111,7 @@ VALID_COUNTRY_AREAS = {
                     "name": "Sobrio",
                     "slug": "sobrio",
                     "external_slug": "sobrio",
-                }
+                },
             ],
         },
     ],

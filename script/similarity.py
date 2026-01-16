@@ -84,7 +84,8 @@ def similarity_algorithm(area_config: dict):
         print("Step 6 completed.")
 
         print("\nStep 7: Optimizing database...")
-        session.execute(text("ANALYZE"))
+        session.execute(text("ANALYZE;"))
+        session.execute(text("VACUUM;"))
         session.commit()
         print("Step 7 completed.")
 

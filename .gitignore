@@ -4,3 +4,4 @@ __pycache__/
 *.db
 backup_database/
 legend.md
+.env

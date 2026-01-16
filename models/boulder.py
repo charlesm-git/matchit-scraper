@@ -1,3 +1,4 @@
+from ast import main
 from datetime import datetime
 import re
 from typing import Optional, List
@@ -10,6 +11,7 @@ from sqlalchemy import (
     Integer,
     String,
     ForeignKey,
+    select,
 )
 
 from models.base import Base
@@ -42,7 +44,9 @@ class Boulder(Base):
     crag_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # Scraping status
-    scraped_ascents: Mapped[bool] = mapped_column(Boolean, default=False)
+    scraped_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True, default=datetime.now()
+    )
     scraped_ascents_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, nullable=True
     )
@@ -56,6 +60,11 @@ class Boulder(Base):
 
     # Similarity matrix ID (for future use)
     similarity_matrix_id: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )
+
+    # Main boulder flag and reference for duplicate boulders
+    main_boulder_id: Mapped[Optional[int]] = mapped_column(
         Integer, nullable=True
     )
 
@@ -91,8 +100,12 @@ class Boulder(Base):
     def __repr__(self):
         return f"<Boulder(name: {self.name}, grade: {self.grade.value}, Ascents: {len(self.ascents)})>"
 
+    @classmethod
+    def get_by_slug(cls, db_session, slug: str):
+        """Retrieve a Boulder by its slug."""
+        return db_session.scalar(select(cls).where(cls.slug == slug))
+
     def mark_as_scraped(self, db):
-        self.scraped_ascents = True
         self.scraped_ascents_at = datetime.now()
         self.ascent_scrape_error = None
         self.ascent_retry_count = 0

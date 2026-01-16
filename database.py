@@ -1,8 +1,12 @@
+import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 
 from models.base import Base
 from models.grade import Grade
+
+load_dotenv()
 
 GRADE_ASSOCIATION_DICT = [
     {"value": "1", "eightanu_correspondence": 1, "correspondence": 1},
@@ -62,9 +66,8 @@ GRADES_TO_SCRAPE = [
     36,
 ]
 
-db_path = "matchit.db"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-DATABASE_URL = f"sqlite:///{db_path}"
 engine = create_engine(DATABASE_URL, echo=False)
 
 session_factory = sessionmaker(bind=engine, expire_on_commit=False)

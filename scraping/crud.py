@@ -16,7 +16,7 @@ def fetch_unscraped_boulders(db):
     """Fetch boulders that have not had their ascents scraped yet."""
     return db.scalars(
         select(Boulder)
-        .where(Boulder.scraped_ascents == False)
+        .where(Boulder.scraped_ascents_at.is_(None))
         .order_by(Boulder.last_ascent_scrape_attempt.asc().nullsfirst())
     ).all()
 
@@ -39,7 +39,7 @@ def fetch_unscraped_boulders_in_area(db, area_slug):
         .join(Crag.area)
         .where(
             Area.slug == area_slug,
-            Boulder.scraped_ascents == False,
+            Boulder.scraped_ascents_at.is_(None),
         )
         .order_by(Boulder.last_ascent_scrape_attempt.asc().nullsfirst())
     ).all()

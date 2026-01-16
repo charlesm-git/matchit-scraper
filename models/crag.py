@@ -25,14 +25,15 @@ class Crag(Base):
 
     # Foreign Key
     area_id: Mapped[int] = mapped_column(
-        ForeignKey("area.id", ondelete="RESTRICT", onupdate="CASCADE"), index=True
+        ForeignKey("area.id", ondelete="RESTRICT", onupdate="CASCADE"),
+        index=True,
     )
 
     # Scraping status (for crags with their own pagination)
-    scraped_boulders: Mapped[Optional[bool]] = mapped_column(
-        Boolean, default=False
+    scraped_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True, default=datetime.now()
     )
-    boulders_scraped_at: Mapped[Optional[datetime]] = mapped_column(
+    scraped_boulders_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, nullable=True
     )
     boulder_scrape_error: Mapped[Optional[str]] = mapped_column(
@@ -88,10 +89,9 @@ class Crag(Base):
 
     def mark_as_scraped(self, db_session):
         """Mark the Crag as having all boulders scraped."""
-        self.scraped_boulders = True
         self.scraping_resume_page = None
         self.scraping_resume_grade_correspondence = None
-        self.boulders_scraped_at = datetime.now()
+        self.scraped_boulders_at = datetime.now()
         db_session.add(self)
         db_session.commit()
         db_session.refresh(self)

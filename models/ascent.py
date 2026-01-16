@@ -49,7 +49,9 @@ class Ascent(Base):
     recommended: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Foreign Keys
-    boulder_id: Mapped[int] = mapped_column(ForeignKey("boulder.id"), index=True)
+    boulder_id: Mapped[int] = mapped_column(
+        ForeignKey("boulder.id"), index=True
+    )
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), index=True)
     log_grade_id: Mapped[int] = mapped_column(ForeignKey("grade.id"))
 

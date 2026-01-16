@@ -42,14 +42,17 @@ class Area(Base):
 
     # Foreign Key
     country_id: Mapped[int] = mapped_column(
-        ForeignKey("country.id", ondelete="RESTRICT", onupdate="CASCADE"), index=True
+        ForeignKey("country.id", ondelete="RESTRICT", onupdate="CASCADE"),
+        index=True,
     )
 
     # Track if the area is fully scraped (all its crags' boulders)
-    scraped: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    scraped_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
     # Track if the crags have been scraped
-    scraped_crags: Mapped[Optional[bool]] = mapped_column(
-        Boolean, default=False
+    scraped_crags_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
     )
     boulder_scrape_error: Mapped[Optional[str]] = mapped_column(
         String, nullable=True
@@ -84,8 +87,8 @@ class Area(Base):
 
     def mark_as_scraped(self, db_session):
         """Mark the Area as having all boulders scraped."""
-        self.scraped = True
-        self.scraped_crags = True
+        self.scraped_at = datetime.now()
+        self.scraped_crags_at = datetime.now()
         self.scraping_resume_page = None
         db_session.add(self)
         db_session.commit()

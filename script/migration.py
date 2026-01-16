@@ -8,7 +8,7 @@ DB_PATH = Path(__file__).parent.parent / "matchit.db"
 # SQL statements to execute
 # Update this section with your migration SQL
 SQL_STATEMENTS = """
-UPDATE area SET slug = 'albarracin' WHERE slug = 'unknown-crag';
+UPDATE boulder SET main_boulder_id = NULL;
 """
 
 

@@ -152,11 +152,11 @@ def fetch_boulders_for_duplicate_check(area_slug: str = None) -> List[Boulder]:
             .join(Boulder.grade)
             .where(
                 and_(
-                    Boulder.ascents.any(),
+                    # Boulder.ascents.any(),
                     not_(
                         or_(
-                            Boulder.name.ilike("%n.n.%"),
-                            Boulder.name.ilike("%n n%"),
+                            Boulder.name_normalized.ilike("%n.n.%"),
+                            Boulder.name_normalized.ilike("%n n%"),
                         )
                     ),
                 )
@@ -340,20 +340,28 @@ def merge_boulder_group(
         ascent_count = len(duplicate.ascents)
 
         if not dry_run:
-            # Move all ascents to target boulder
-            for ascent in duplicate.ascents:
-                ascent.boulder_id = target_boulder.id
-                db.add(ascent)
-
-            total_moved += ascent_count
+            duplicate.main_boulder_id = target_boulder.id
+            db.add(duplicate)
 
     if not dry_run:
         db.commit()
         print(
-            f"\n  ✓ Merged {total_moved} ascents from {len(duplicates)} duplicate boulder(s)"
+            f"\n  ✓ Merged {len(duplicates)} duplicates into Boulder ID {target_boulder.id}. "
         )
 
     return target_boulder, duplicates
+
+
+def move_ascents(db, source_boulder: Boulder, target_boulder: Boulder):
+    """Move all ascents from source boulder to target boulder."""
+    ascents_moved = 0
+    for ascent in source_boulder.ascents:
+        ascent.boulder_id = target_boulder.id
+        db.add(ascent)
+        ascents_moved += 1
+
+    db.commit()
+    return ascents_moved
 
 
 def interactive_merge(
@@ -486,7 +494,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    
+
     countries = VALID_COUNTRY_AREAS.keys()
     area_slug = None
     if args.area:
@@ -494,7 +502,7 @@ if __name__ == "__main__":
         area_found = False
         for country in countries:
             for area in VALID_COUNTRY_AREAS[country]:
-                if area["area"] == args.area:
+                if area["area_slug"] == args.area:
                     area_found = True
                     area_slug = area["area_slug"]
                     break
