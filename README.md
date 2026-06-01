@@ -1,59 +1,101 @@
-# Climbing Scraper
+# Match-It Scraper
 
-This scraper is designed for **personal use only** to scrape data from the [8a.nu](https://www.8a.nu/) website. It collects information on regions, areas, boulders, public repetitors, and ascents. The scraper scrapes more than 100,000 pages and stores the data in a PostgreSQL database managed by SQLAlchemy and hosted on Neon.
+Scraper and similarity engine for the Match-It bouldering platform. Collects boulder and ascent data from [8a.nu](https://www.8a.nu/) across multiple countries and computes boulder-to-boulder similarity matrices used by the recommendation system.
+
+**For personal use only.**
+
+## Tech Stack
+
+- **Scraping:** Requests (synchronous)
+- **Database:** PostgreSQL (Neon) via SQLAlchemy
+- **ML/Similarity:** SciPy, NumPy, Pandas, scikit-learn
+- **Fuzzy Matching:** RapidFuzz (for deduplication)
+- **Package Manager:** Poetry
 
 ## Features
 
-- **Asynchronous Scraping:** Efficiently scrapes the site using Python's `asyncio` and `aiohttp`.
-- **SQLite Database:** Stores the scraped data in a SQLite database, managed via SQLAlchemy.
-- **Resume Capability:** Scraping can be stopped and resumed at any point with progress tracking
-- **Added Crags Support:** Handle orphaned crags that should belong to a parent area but have their own pagination
-- **Data Stored:**
-  - Areas (name, region, boulders, etc.)
-  - Boulders (name, grade, style, etc.)
-  - Public Users and Ascents
+### Scraping
+- Scrape boulders, crags, areas, users, and ascents from 8a.nu
+- Resume capability — scraping can be stopped and restarted with progress tracking
+- Handles complex area structures (added crags, single-layer divisions, synthetic crags)
+- Configurable per-area scraping options
 
-## Configuration
+### Similarity Engine
+- **Ascent-based similarity:** Jaccard similarity on user-boulder co-ascent matrices
+- **Grade-based similarity:** Grade proximity weighting between boulders
+- **Combined scoring:** Weighted combination of ascent and grade similarity
+- Matrix cleaning, CSR conversion, and storage in the database
 
-Areas and crags are configured in [config.py](config.py) under `VALID_COUNTRY_AREAS`. Each area can have:
+### Scripts
+- `script/scraper.py` — Main scraper (boulders, ascents, full reset)
+- `script/similarity.py` — Compute and store similarity matrices
+- `script/deduplicate.py` — Find and merge duplicate boulders
+- `script/update_area_numbers.py` — Refresh area boulder/ascent counts
+- `script/create_indexes.py` — Create database indexes
+- `script/cleanup.py` — Database cleanup utilities
+- `script/migration.py` — Schema migrations
 
-- `scrape_as_crag`: Whether to scrape as a crag with pagination
-- `use_synthetic_crag`: Whether to create a synthetic crag wrapper
-- `added_crags`: List of crags that should be under this area but have their own pagination system
+## Supported Areas
 
-### Added Crags
+| Country | Areas |
+|---------|-------|
+| Austria | Silvretta |
+| France | Fontainebleau |
+| Italy | Val Daone, Val di Mello, Varazze |
+| Spain | Albarracín |
+| Sweden | Västervik |
+| Switzerland | Bas-Valais, Magic Wood, Ticino |
 
-Some locations have crags that are improperly split on 8a.nu - they should be part of a parent area but have their own pagination system. Use `added_crags` to scrape these:
+Areas are configured in `config.py` under `VALID_COUNTRY_AREAS`.
 
-```python
-{
-    "area": "ticino",
-    "area_slug": "ticino",
-    "area_name": "Ticino",
-    "scrape_as_crag": False,
-    "use_synthetic_crag": False,
-    "added_crags": [
-        {"name": "Bodio", "slug": "bodio"},
-        {"name": "Osogna", "slug": "osogna"},
-    ],
-}
+## Project Structure
+
 ```
-
+matchit-scraper/
+├── config.py              # Area configuration & constants
+├── database.py            # SQLAlchemy engine & session
+├── scraping/              # Scraping logic (fetch, parse, CRUD)
+├── ml/                    # Similarity computation
+│   ├── ascents_similarity.py
+│   ├── grade_similarity.py
+│   ├── matrix_cleaning.py
+│   └── crud.py
+├── models/                # SQLAlchemy models
+├── script/                # Runnable scripts
+└── ml/notebooks/          # Jupyter notebooks for exploration
+```
 
 ## Database Models
 
-The SQLite database is organized with the following models:
+- **Country** / **Area** / **Crag** — Geographic hierarchy
+- **Boulder** — Name, grade, location
+- **User** — Public climber profiles
+- **Ascent** — Boulder × User association
+- **Grade** — Grade scale with numeric correspondence
+- **Similarity** — Precomputed boulder similarity scores
 
-- **Boulder**
-- **Area**
-- **Region**
-- **Grade**
-- **User**
-- **Style**
-- **Ascent** (association table between Boulder and User)
-- **Boulder_Style** (association table between Boulder and Style)
-- **Boulder_Setter** (association table between Boulder and User)
+## Usage
+
+```bash
+# Install dependencies
+poetry install
+
+# Scrape boulders for an area
+python script/scraper.py -c switzerland -a ticino -sb
+
+# Scrape ascents for an area
+python script/scraper.py -c switzerland -a ticino -sa
+
+# Scrape ascents for all boulders in the database
+python script/scraper.py -sa
+
+# Compute similarity matrices
+python script/similarity.py -c switzerland -a ticino
+
+# Reset database (destructive — requires confirmation)
+python script/scraper.py --reset
+```
 
 ## License
 
-This project is for **personal use only**. All rights reserved to the original website owner. Ensure compliance with the site's `robots.txt` or terms of service regarding scraping.
+For **personal use only**. All data rights belong to the original website owner. Ensure compliance with the site's terms of service.
