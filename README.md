@@ -1,6 +1,6 @@
-# Bleau.info Scraper
+# Climbing Scraper
 
-This scraper is designed for **personal use only** to scrape data from the [bleau.info](https://bleau.info/) website. It collects information on regions, areas, boulders, public repetitors, and ascents. The scraper uses asynchronous Python with `aiohttp` for efficient scraping of more than 40,000 pages and stores the data in a SQLite database managed by SQLAlchemy.
+This scraper is designed for **personal use only** to scrape data from the [8a.nu](https://www.8a.nu/) website. It collects information on regions, areas, boulders, public repetitors, and ascents. The scraper scrapes more than 100,000 pages and stores the data in a PostgreSQL database managed by SQLAlchemy and hosted on Neon.
 
 ## Features
 
@@ -57,8 +57,3 @@ The SQLite database is organized with the following models:
 ## License
 
 This project is for **personal use only**. All rights reserved to the original website owner. Ensure compliance with the site's `robots.txt` or terms of service regarding scraping.
-
-## Notes
-
-- Scraping a large website like bleau.info may take some time. You can monitor the progress through logging.
-- Make sure to respect the site's `robots.txt` or terms of service regarding scraping.
